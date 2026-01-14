@@ -6,6 +6,7 @@
         private const float depth = 16.0f;
         private const float fov = 3.14159f / 4.0f;
         private MiniMap miniMap;
+        private Player player;
         public Map()
         {
 
@@ -14,9 +15,10 @@
         public Map(MiniMap miniMap, Player player, Window window)
         {
             depthBuffer = new float[window.ScreenWidth, window.ScreenHeight];
-            this.miniMap = miniMap; 
+            this.miniMap = miniMap;
+            this.player = player;
             InitDepthBuffer(window);
-            RaycastAndRenderWalls(player, window);
+            RaycastAndRenderWalls(window);
         }
 
         private void InitDepthBuffer(Window window)
@@ -30,7 +32,12 @@
             }
         }
 
-        private void RaycastAndRenderWalls(Player player, Window window)
+        public void Update(Window window)
+        {
+            RaycastAndRenderWalls(window);
+        }
+
+        private void RaycastAndRenderWalls(Window window)
         {
             for (int x = 0; x < window.ScreenWidth; x++)
             {

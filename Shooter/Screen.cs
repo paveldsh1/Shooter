@@ -1,7 +1,4 @@
-﻿using System.ComponentModel;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
+﻿using System.Text;
 
 namespace Shooter
 {
@@ -21,7 +18,7 @@ namespace Shooter
 
         public void Render(MiniMap? miniMap = null)
         {
-            if (miniMap != null) AddMiniMapToScreen(miniMap); 
+            if (miniMap != null) AddMiniMapToScreen(miniMap);
             StringBuilder render = new();
             for (int y = 0; y < Screen.GetLength(1); y++)
             {

@@ -2,13 +2,45 @@
 {
     internal class Game
     {
+        private MiniMap miniMap;
+        private Player player;
+        private Window window;
+        private Map map;
         public Game()
         {
-            MiniMap miniMap = new MiniMap();
-            Player player = new Player(miniMap);
-            Window window = new Window();
-            Map map = new Map(miniMap, player, window);
+            miniMap = new MiniMap();
+            player = new Player(miniMap);
+            window = new Window();
+            map = new Map(miniMap, player, window);
+        }
+
+        public void Start()
+        {
             window.Render(miniMap);
+            bool closeRequested = false;
+            bool isThereMiniMap = true;
+            while (!closeRequested)
+            {
+                switch (Console.ReadKey(true).Key)
+                {
+                    case ConsoleKey.Escape:
+                        closeRequested = true;
+                        return;
+                    case ConsoleKey.W:
+                        player.MoveForward();
+                        break;
+                    case ConsoleKey.M:
+                        isThereMiniMap = !isThereMiniMap;
+                        if (!isThereMiniMap)
+                        {
+                            map.Update(window);
+                            window.Render();
+                        }
+                        else window.Render(miniMap);
+                        break;
+                }
+            }
+            //window.Render(miniMap);
             Console.ReadLine();
         }
     }

@@ -40,5 +40,9 @@
                 }
             }
         }
+
+        public void MoveForward(){
+            
+        }
     }
 }
