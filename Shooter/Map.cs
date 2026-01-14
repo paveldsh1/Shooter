@@ -57,7 +57,7 @@
                     }
                     else
                     {
-                        if (miniMap.Map[testY][testX] == '█')
+                        if (miniMap.Map[testY][testX] == '#')
                         {
                             hitWall = true;
                             List<(float, float)> p = new();

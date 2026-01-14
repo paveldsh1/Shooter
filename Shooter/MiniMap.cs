@@ -21,7 +21,7 @@ namespace Shooter
                 Map[i] = new char[width];
                 for (int j = 0; j < width; ++j)
                 {
-                    if (i == 0 || i == height - 1 || j == 0 || j == width - 1) Map[i][j] = '█';
+                    if (i == 0 || i == height - 1 || j == 0 || j == width - 1) Map[i][j] = '#';
                     else
                     {
                         Map[i][j] = ' '; // TODO RandomService.GetRandomField();

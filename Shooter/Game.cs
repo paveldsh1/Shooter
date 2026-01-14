@@ -8,7 +8,8 @@
             Player player = new Player(miniMap);
             Window window = new Window();
             Map map = new Map(miniMap, player, window);
-            window.Render();
+            window.Render(miniMap);
+            Console.ReadLine();
         }
     }
 }

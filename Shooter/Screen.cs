@@ -1,12 +1,15 @@
-﻿using System.Text;
+﻿using System.ComponentModel;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Shooter
 {
     internal class Window
     {
-        public int ScreenWidth { get; set; }
-        public int ScreenHeight { get; set; }
-        public char[,] Screen { get; set; }
+        public int ScreenWidth { get; }
+        public int ScreenHeight { get; }
+        public char[,] Screen { get; private set; }
 
         public Window()
         {
@@ -14,12 +17,11 @@ namespace Shooter
             ScreenHeight = 40;
             Screen = new char[ScreenWidth, ScreenHeight];
             Console.SetWindowSize(ScreenWidth, ScreenHeight);
-            Console.CursorVisible = false;
-            Console.SetCursorPosition(0, 0);
         }
 
-        public void Render()
+        public void Render(MiniMap? miniMap = null)
         {
+            if (miniMap != null) AddMiniMapToScreen(miniMap); 
             StringBuilder render = new();
             for (int y = 0; y < Screen.GetLength(1); y++)
             {
@@ -35,6 +37,17 @@ namespace Shooter
             Console.CursorVisible = false;
             Console.SetCursorPosition(0, 0);
             Console.Write(render);
+        }
+        
+        private void AddMiniMapToScreen(MiniMap miniMap)
+        {
+            for (int y = 0; y < miniMap.Map.GetLength(0); y++)
+            {
+                for (int x = 0; x < miniMap.Map[y].Length; x++)
+                {
+                    Screen[x, y] = miniMap.Map[y][x];
+                }
+            }
         }
     }
 }
