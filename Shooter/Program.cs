@@ -4,7 +4,7 @@
     {
         private static void Main(string[] args)
         {
-            Screen screen = new Screen();
+            Game game = new Game();
         }
     }
 }
