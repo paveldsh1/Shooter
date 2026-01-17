@@ -27,7 +27,7 @@ namespace Shooter
             {
                 float elapsedSeconds = (float)stopwatch.Elapsed.TotalSeconds;
                 elapsedSeconds = MathF.Min(elapsedSeconds, 0.1f);
-                //stopwatch.Restart();/
+                stopwatch.Restart();
 
                 switch (Console.ReadKey(true).Key)
                 {
@@ -41,6 +41,16 @@ namespace Shooter
                         break;
                     case ConsoleKey.S:
                         player.MoveBack(elapsedSeconds, miniMap);
+                        map.Update(window);
+                        window.Render();
+                        break;
+                    case ConsoleKey.A:
+                        player.MoveLeft(elapsedSeconds);
+                        map.Update(window);
+                        window.Render();
+                        break;
+                    case ConsoleKey.D:
+                        player.MoveRight(elapsedSeconds);
                         map.Update(window);
                         window.Render();
                         break;

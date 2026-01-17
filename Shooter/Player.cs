@@ -8,6 +8,8 @@
 
         private const float speed = 5.0f;
 
+        private float rotationSpeed = 0.28f;
+
         private Player()
         {
             PlayerA = default;
@@ -89,6 +91,25 @@
                 && testX >= 0
                 && testX < miniMap.Map[testY].Length
                 && miniMap.Map[testY][testX] != '█';
+        }
+
+        public void MoveRight(float elapsedSeconds)
+        {
+            PlayerA += (speed * rotationSpeed) * elapsedSeconds;
+            if (PlayerA > (float)Math.PI * 2)
+            {
+                PlayerA %= (float)Math.PI * 2;
+            }
+        }
+
+        public void MoveLeft(float elapsedSeconds)
+        {
+            PlayerA -= (speed * rotationSpeed) * elapsedSeconds;
+            if (PlayerA < 0)
+            {
+                PlayerA %= (float)Math.PI * 2;
+                PlayerA += (float)Math.PI * 2;
+            }
         }
     }
 }
