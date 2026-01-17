@@ -8,6 +8,8 @@ namespace Shooter
         public int ScreenHeight { get; }
         public char[,] Screen { get; private set; }
 
+        private bool firstMiniMapRender = true;
+
         public Window()
         {
             ScreenWidth = 120;
@@ -16,9 +18,14 @@ namespace Shooter
             Console.SetWindowSize(ScreenWidth, ScreenHeight);
         }
 
-        public void Render(MiniMap? miniMap = null)
+        public void Render(MiniMap? miniMap = null, Player? player = null)
         {
-            if (miniMap != null) AddMiniMapToScreen(miniMap);
+            if (miniMap != null && player != null)
+            {
+                if (!firstMiniMapRender) miniMap.Update(player);
+                else firstMiniMapRender = !firstMiniMapRender;
+                AddMiniMapToScreen(miniMap);
+            }
             StringBuilder render = new();
             for (int y = 0; y < Screen.GetLength(1); y++)
             {
