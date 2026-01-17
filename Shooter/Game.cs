@@ -1,4 +1,6 @@
-﻿namespace Shooter
+﻿using System.Diagnostics;
+
+namespace Shooter
 {
     internal class Game
     {
@@ -6,6 +8,7 @@
         private Player player;
         private Window window;
         private Map map;
+        private readonly Stopwatch stopwatch = Stopwatch.StartNew();
         public Game()
         {
             miniMap = new MiniMap();
@@ -18,20 +21,32 @@
         {
             window.Render(miniMap);
             bool closeRequested = false;
-            bool isThereMiniMap = true;
+            bool mapVisible = true;
+            //stopwatch.Restart();
             while (!closeRequested)
             {
+                float elapsedSeconds = (float)stopwatch.Elapsed.TotalSeconds;
+                elapsedSeconds = MathF.Min(elapsedSeconds, 0.1f);
+                //stopwatch.Restart();/
+
                 switch (Console.ReadKey(true).Key)
                 {
                     case ConsoleKey.Escape:
                         closeRequested = true;
                         return;
                     case ConsoleKey.W:
-                        player.MoveForward();
+                        player.MoveForward(elapsedSeconds, miniMap);
+                        map.Update(window);
+                        window.Render();
+                        break;
+                    case ConsoleKey.S:
+                        player.MoveBack(elapsedSeconds, miniMap);
+                        map.Update(window);
+                        window.Render();
                         break;
                     case ConsoleKey.M:
-                        isThereMiniMap = !isThereMiniMap;
-                        if (!isThereMiniMap)
+                        mapVisible = !mapVisible;
+                        if (!mapVisible)
                         {
                             map.Update(window);
                             window.Render();

@@ -7,10 +7,10 @@
         private const float fov = 3.14159f / 4.0f;
         private MiniMap miniMap;
         private Player player;
-        public Map()
-        {
-
-        }
+        //public Map()
+        //{
+  
+        //}
 
         public Map(MiniMap miniMap, Player player, Window window)
         {
@@ -41,7 +41,7 @@
         {
             for (int x = 0; x < window.ScreenWidth; x++)
             {
-                float rayAngle = (player.PLAYERA - fov / 2.0f) + (x / (float)window.ScreenWidth) * fov;
+                float rayAngle = (player.PlayerA - fov / 2.0f) + (x / (float)window.ScreenWidth) * fov;
 
                 float stepSize = 0.1f;
                 float distanceToWall = 0.0f;
@@ -55,8 +55,8 @@
                 while (!hitWall && distanceToWall < depth)
                 {
                     distanceToWall += stepSize;
-                    int testX = (int)(player.PLAYERX + eyeX * distanceToWall);
-                    int testY = (int)(player.PLAYERY + eyeY * distanceToWall);
+                    int testX = (int)(player.PlayerX + eyeX * distanceToWall);
+                    int testY = (int)(player.PlayerY + eyeY * distanceToWall);
                     if (testY < 0 || testY >= miniMap.Map.Length || testX < 0 || testX >= miniMap.Map[testY].Length)
                     {
                         hitWall = true;
@@ -72,8 +72,8 @@
                             {
                                 for (int ty = 0; ty < 2; ty++)
                                 {
-                                    float vy = (float)testY + ty - player.PLAYERY;
-                                    float vx = (float)testX + tx - player.PLAYERX;
+                                    float vy = (float)testY + ty - player.PlayerY;
+                                    float vx = (float)testX + tx - player.PlayerX;
                                     float d = (float)Math.Sqrt(vx * vx + vy * vy);
                                     float dot = (eyeX * vx / d) + (eyeY * vy / d);
                                     p.Add((d, dot));

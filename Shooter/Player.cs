@@ -2,15 +2,17 @@
 {
     internal class Player
     {
-        public float PLAYERA { get; private set; }
-        public float PLAYERX { get; private set; }
-        public float PLAYERY { get; private set; }
+        public float PlayerA { get; private set; }
+        public float PlayerX { get; private set; }
+        public float PlayerY { get; private set; }
+
+        private const float speed = 5.0f;
 
         private Player()
         {
-            PLAYERA = default;
-            PLAYERX = default;
-            PLAYERY = default;
+            PlayerA = default;
+            PlayerX = default;
+            PlayerY = default;
         }
 
         public Player(MiniMap map)
@@ -26,9 +28,9 @@
                 {
                     if (miniMap.Map[i][j] is '^' or '<' or '>' or 'v')
                     {
-                        PLAYERY = i + .5f;
-                        PLAYERX = j + .5f;
-                        PLAYERA = miniMap.Map[i][j] switch
+                        PlayerY = i + .5f;
+                        PlayerX = j + .5f;
+                        PlayerA = miniMap.Map[i][j] switch
                         {
                             '^' => 4.71f,
                             '>' => 0.00f,
@@ -41,8 +43,52 @@
             }
         }
 
-        public void MoveForward(){
-            
+        public void MoveForward(float elapsedSeconds, MiniMap miniMap)
+        {
+            var (dx, dy) = GetMovementDelta(elapsedSeconds);
+            float nx = PlayerX + dx;
+            float ny = PlayerY + dy;
+
+            if (CanMoveTo(nx, ny, miniMap))
+            {
+                PlayerX = nx;
+                PlayerY = ny;
+            }
+        }
+
+        public void MoveBack(float elapsedSeconds, MiniMap miniMap)
+        {
+            var (dx, dy) = GetMovementDelta(elapsedSeconds);
+            float nx = PlayerX - dx;
+            float ny = PlayerY - dy;
+
+            if (CanMoveTo(nx, ny, miniMap))
+            {
+                PlayerX = nx;
+                PlayerY = ny;
+            }
+        }
+
+        private (float dx, float dy) GetMovementDelta(float elapsedSeconds)
+        {
+            float step = speed * elapsedSeconds;
+            float dx = (float)Math.Cos(PlayerA) * step;
+            float dy = (float)Math.Sin(PlayerA) * step;
+            return (dx, dy);
+        }
+
+        private bool CanMoveTo(float nx, float ny, MiniMap miniMap)
+        {
+            if (miniMap?.Map == null) return false;
+
+            int testX = (int)nx;
+            int testY = (int)ny;
+
+            return testY >= 0
+                && testY < miniMap.Map.Length
+                && testX >= 0
+                && testX < miniMap.Map[testY].Length
+                && miniMap.Map[testY][testX] != '█';
         }
     }
 }
