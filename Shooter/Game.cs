@@ -19,7 +19,7 @@ namespace Shooter
 
         public void Start()
         {
-            window.Render(miniMap);
+            Refresh(renderMiniMap: true);
             bool closeRequested = false;
             bool mapVisible = true;
             //stopwatch.Restart();
@@ -36,37 +36,48 @@ namespace Shooter
                         return;
                     case ConsoleKey.W:
                         player.MoveForward(elapsedSeconds, miniMap);
-                        map.Update(window);
-                        window.Render();
+                        Refresh();
                         break;
                     case ConsoleKey.S:
                         player.MoveBack(elapsedSeconds, miniMap);
-                        map.Update(window);
-                        window.Render();
+                        Refresh();
                         break;
                     case ConsoleKey.A:
                         player.MoveLeft(elapsedSeconds);
-                        map.Update(window);
-                        window.Render();
+                        Refresh();
                         break;
                     case ConsoleKey.D:
                         player.MoveRight(elapsedSeconds);
-                        map.Update(window);
-                        window.Render();
+                        Refresh();
                         break;
                     case ConsoleKey.M:
                         mapVisible = !mapVisible;
                         if (!mapVisible)
                         {
-                            map.Update(window);
-                            window.Render();
+                            Refresh();
                         }
-                        else window.Render(miniMap);
+                        else
+                        {
+                            Refresh(renderMiniMap: true);
+                        }
                         break;
                 }
             }
             //window.Render(miniMap);
             Console.ReadLine();
+        }
+
+        private void Refresh(bool renderMiniMap = false)
+        {
+            if (renderMiniMap)
+            {
+                window.Render(miniMap);
+            }
+            else
+            {
+                map.Update(window);
+                window.Render();
+            }
         }
     }
 }
