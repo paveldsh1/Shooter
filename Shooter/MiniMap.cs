@@ -1,7 +1,4 @@
-﻿using Shooter.Services;
-using System.Data;
-
-namespace Shooter
+﻿namespace Shooter
 {
     internal class MiniMap
     {
