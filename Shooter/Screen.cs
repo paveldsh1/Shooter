@@ -26,21 +26,22 @@ namespace Shooter
                 else firstMiniMapRender = !firstMiniMapRender;
                 AddMiniMapToScreen(miniMap);
             }
-            StringBuilder render = new();
-            for (int y = 0; y < Screen.GetLength(1); y++)
-            {
-                for (int x = 0; x < Screen.GetLength(0); x++)
-                {
-                    render.Append(Screen[x, y]);
-                }
-                if (y < Screen.GetLength(1) - 1)
-                {
-                    render.AppendLine();
-                }
-            }
-            Console.CursorVisible = false;
-            Console.SetCursorPosition(0, 0);
-            Console.Write(render);
+            //StringBuilder render = new();
+            //for (int y = 0; y < Screen.GetLength(1); y++)
+            //{
+            //    for (int x = 0; x < Screen.GetLength(0); x++)
+            //    {
+            //        render.Append(Screen[x, y]);
+            //    }
+            //    if (y < Screen.GetLength(1) - 1)
+            //    {
+            //        render.AppendLine();
+            //    }
+            //}
+            //Console.CursorVisible = false;
+            //Console.SetCursorPosition(0, 0);
+            //string str = render.ToString();
+            //Console.Write(render);
         }
         
         private void AddMiniMapToScreen(MiniMap miniMap)
@@ -52,6 +53,25 @@ namespace Shooter
                     Screen[x, y] = miniMap.Map[y][x];
                 }
             }
+        }
+
+        public static string ToText(char[,] grid)
+        {
+            int rows = grid.GetLength(1);
+            int cols = grid.GetLength(0);
+            StringBuilder result = new StringBuilder();
+            for(int y = 0; y < rows; ++y)
+            {
+                for(int x = 0; x < cols; ++x)
+                {
+                    result.Append(grid[x, y]);
+                }
+                if (y < grid.GetLength(1) - 1)
+                {
+                    result.AppendLine();
+                }
+            }
+            return result.ToString();
         }
     }
 }

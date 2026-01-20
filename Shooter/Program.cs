@@ -1,5 +1,4 @@
-﻿using System.Net.WebSockets;
-using System.Text;
+﻿using System.Text;
 
 namespace Shooter
 {
@@ -33,30 +32,10 @@ namespace Shooter
                 using var socket = await context.WebSockets.AcceptWebSocketAsync();
                 Console.WriteLine("Client connected");
 
-                var buffer = new byte[1024];
-
-                while (true)
-                {
-                    var result = await socket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer),
-                        CancellationToken.None);
-
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        Console.WriteLine("Client disconnected");
-                        break;
-                    }
-
-                    var key = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine($"Key from browser: {key}");
-
-                    var response = Encoding.UTF8.GetBytes($"You pressed: {key}");
-                    await socket.SendAsync(
-                        new ArraySegment<byte>(response),
-                        WebSocketMessageType.Text,
-                        true,
-                        CancellationToken.None);
-                }
+                Console.OutputEncoding = Encoding.UTF8;
+                Console.InputEncoding = Encoding.UTF8;
+                Game game = new Game();
+                await game.Start(socket);
             });
 
             app.Run();
