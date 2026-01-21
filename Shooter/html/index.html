@@ -117,10 +117,23 @@
                 body: JSON.stringify({ nickname })
             });
             if (res.ok) {
-                return true;
+                const data = await res.json();
+                return { ok: true, playerId: data.playerId };
             }
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "Registration failed");
+            return { ok: false, status: res.status, data: await res.json().catch(() => ({})) };
+        }
+
+        async function loginNickname(nickname) {
+            const res = await fetch("/players/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nickname })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return { ok: true, playerId: data.playerId };
+            }
+            return { ok: false, status: res.status, data: await res.json().catch(() => ({})) };
         }
 
         joinBtn.addEventListener("click", async () => {
@@ -130,10 +143,25 @@
                 return;
             }
             try {
-                await registerNickname(nickname);
-                //localStorage.setItem("nickname", nickname);
-                overlay.style.display = "none";
-                connectWebSocket();
+                const reg = await registerNickname(nickname);
+                if (reg.ok) {
+                    //localStorage.setItem("nickname", nickname);
+                    //localStorage.setItem("playerId", reg.playerId);
+                    overlay.style.display = "none";
+                    connectWebSocket();
+                    return;
+                }
+                if (reg.status === 409) {
+                    const lg = await loginNickname(nickname);
+                    if (lg.ok) {
+                        //localStorage.setItem("nickname", nickname);
+                        //localStorage.setItem("playerId", lg.playerId);
+                        overlay.style.display = "none";
+                        connectWebSocket();
+                        return;
+                    }
+                }
+                throw new Error(reg.data?.error || "Registration failed");
             } catch (err) {
                 errorBox.textContent = err.message;
             }

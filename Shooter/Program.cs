@@ -30,6 +30,22 @@ namespace Shooter
                 return Microsoft.AspNetCore.Http.Results.Ok(new { playerId });
             });
 
+            app.MapPost("/players/login", async (HttpContext context, PlayerRegistryService registry) =>
+            {
+                var payload = await context.Request.ReadFromJsonAsync<RegisterRequest>();
+                if (payload is null || string.IsNullOrWhiteSpace(payload.Nickname))
+                {
+                    return Microsoft.AspNetCore.Http.Results.BadRequest(new { error = "Nickname is required" });
+                }
+
+                if (registry.TryGet(payload.Nickname, out var playerId))
+                {
+                    return Microsoft.AspNetCore.Http.Results.Ok(new { playerId });
+                }
+
+                return Microsoft.AspNetCore.Http.Results.NotFound(new { error = "Nickname not found" });
+            });
+
             // HTML страница
             app.MapGet("/", async context =>
             {

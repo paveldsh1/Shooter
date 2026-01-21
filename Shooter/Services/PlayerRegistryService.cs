@@ -18,6 +18,13 @@ namespace Shooter.Services
 			playerId = System.Guid.NewGuid();
 			return nicknameToPlayerId.TryAdd(key, playerId);
 		}
+
+		public bool TryGet(string nickname, out Guid playerId)
+		{
+			playerId = System.Guid.Empty;
+			if (string.IsNullOrWhiteSpace(nickname)) return false;
+			return nicknameToPlayerId.TryGetValue(nickname.Trim(), out playerId);
+		}
 	}
 }
 
