@@ -10,6 +10,43 @@
             font-family: Consolas, "Cascadia Mono", monospace;
         }
 
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        #form {
+            background: #111;
+            color: #00ff00;
+            border: 1px solid #0f0;
+            padding: 16px;
+            width: 300px;
+        }
+
+        #form input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            margin-bottom: 8px;
+            box-sizing: border-box;
+        }
+
+        #form button {
+            width: 100%;
+            padding: 8px;
+            background: #0f0;
+            color: #000;
+            border: none;
+            cursor: pointer;
+        }
+
         textarea {
             width: 120ch; /* 120 columns */
             height: calc(40 * 1em); /* 40 rows */
@@ -32,33 +69,82 @@
     </style>
 </head>
 <body>
+    <div id="overlay">
+        <div id="form">
+            <div style="margin-bottom:8px;">Введите никнейм</div>
+            <input id="nickname" type="text" maxlength="24" placeholder="Player1" />
+            <div id="error" style="color:#f55; min-height:20px;"></div>
+            <button id="join">Войти</button>
+        </div>
+    </div>
+
     <textarea id="output" readonly rows="40" cols="120" wrap="off" spellcheck="false"></textarea><br />
 
     <script>
         const output = document.getElementById("output");
+        const overlay = document.getElementById("overlay");
+        const joinBtn = document.getElementById("join");
+        const nicknameInput = document.getElementById("nickname");
+        const errorBox = document.getElementById("error");
 
-        const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-        const ws = new WebSocket(protocol + location.host + "/ws");
+        function connectWebSocket() {
+            const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+            const ws = new WebSocket(protocol + location.host + "/ws");
 
-        ws.onopen = () => {
-            output.value = "WebSocket connected";
-        };
+            ws.onopen = () => {
+                output.value = "WebSocket connected";
+            };
 
-        ws.onmessage = e => {
-            output.value = e.data;
-            console.log(123);
-        };
+            ws.onmessage = e => {
+                output.value = e.data;
+            };
 
-        ws.onerror = e => {
-            output.value = "WebSocket error";
-        };
+            ws.onerror = e => {
+                output.value = "WebSocket error";
+            };
 
-        document.addEventListener("keydown", e => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(e.code);
-                console.log(555);
+            document.addEventListener("keydown", e => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(e.code);
+                }
+            });
+        }
+
+        async function registerNickname(nickname) {
+            const res = await fetch("/players/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nickname })
+            });
+            if (res.ok) {
+                return true;
+            }
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Registration failed");
+        }
+
+        joinBtn.addEventListener("click", async () => {
+            const nickname = nicknameInput.value.trim();
+            if (!nickname) {
+                errorBox.textContent = "Введите никнейм";
+                return;
+            }
+            try {
+                await registerNickname(nickname);
+                //localStorage.setItem("nickname", nickname);
+                overlay.style.display = "none";
+                connectWebSocket();
+            } catch (err) {
+                errorBox.textContent = err.message;
             }
         });
+
+        // Авто-логин, если ник уже сохранён
+        //const cached = localStorage.getItem("nickname");
+        //if (cached) {
+        //    overlay.style.display = "none";
+        //    connectWebSocket();
+        //}
     </script>
 </body>
 </html>

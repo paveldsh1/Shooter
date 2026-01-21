@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Shooter.Services;
 
 namespace Shooter
 {
@@ -7,10 +8,27 @@ namespace Shooter
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddSingleton<PlayerRegistryService>();
             var app = builder.Build();
 
             // Включаем WebSocket
             app.UseWebSockets();
+
+            app.MapPost("/players/register", async (HttpContext context, PlayerRegistryService registry) =>
+            {
+                var payload = await context.Request.ReadFromJsonAsync<RegisterRequest>();
+                if (payload is null || string.IsNullOrWhiteSpace(payload.Nickname))
+                {
+                    return Microsoft.AspNetCore.Http.Results.BadRequest(new { error = "Nickname is required" });
+                }
+
+                if (!registry.TryRegister(payload.Nickname, out var playerId))
+                {
+                    return Microsoft.AspNetCore.Http.Results.Conflict(new { error = "Nickname already exists" });
+                }
+
+                return Microsoft.AspNetCore.Http.Results.Ok(new { playerId });
+            });
 
             // HTML страница
             app.MapGet("/", async context =>
@@ -41,4 +59,6 @@ namespace Shooter
             app.Run();
         }
     }
+
+    internal record RegisterRequest(string Nickname);
 }
