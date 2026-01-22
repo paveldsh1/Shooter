@@ -2,6 +2,7 @@
 {
     internal class Player
     {
+        private readonly string nickname;
         public float PlayerA { get; private set; }
         public float PlayerX { get; private set; }
         public float PlayerY { get; private set; }
@@ -10,40 +11,41 @@
 
         private float rotationSpeed = 0.28f;
 
-        private Player()
+        public Player()
         {
-            PlayerA = default;
-            PlayerX = default;
-            PlayerY = default;
+            nickname = "unknown";
+            PlayerA = 4.71f;
+            PlayerX = 3.5f;
+            PlayerY = 3.5f;
         }
 
-        public Player(MiniMap map)
+        public Player(string nickname)
         {
-            CreateFromMap(map);
+            this.nickname = nickname;
         }
 
-        private void CreateFromMap(MiniMap miniMap)
-        {
-            for (int i = 0; i < miniMap.Map.Length; i++)
-            {
-                for (int j = 0; j < miniMap.Map[i].Length; j++)
-                {
-                    if (miniMap.Map[i][j] is '^' or '<' or '>' or 'v')
-                    {
-                        PlayerY = i + .5f;
-                        PlayerX = j + .5f;
-                        PlayerA = miniMap.Map[i][j] switch
-                        {
-                            '^' => 4.71f,
-                            '>' => 0.00f,
-                            '<' => 3.14f,
-                            'v' => 1.57f,
-                            _ => throw new NotImplementedException(),
-                        };
-                    }
-                }
-            }
-        }
+        //private void CreateFromMap(MiniMap miniMap)
+        //{
+        //    for (int i = 0; i < miniMap.Map.Length; i++)
+        //    {
+        //        for (int j = 0; j < miniMap.Map[i].Length; j++)
+        //        {
+        //            if (miniMap.Map[i][j] is '^' or '<' or '>' or 'v')
+        //            {
+        //                PlayerY = i + .5f;
+        //                PlayerX = j + .5f;
+        //                PlayerA = miniMap.Map[i][j] switch
+        //                {
+        //                    '^' => 4.71f,
+        //                    '>' => 0.00f,
+        //                    '<' => 3.14f,
+        //                    'v' => 1.57f,
+        //                    _ => throw new NotImplementedException(),
+        //                };
+        //            }
+        //        }
+        //    }
+        //}
 
         public void MoveForward(float elapsedSeconds, MiniMap miniMap)
         {

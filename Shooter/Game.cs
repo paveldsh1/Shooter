@@ -15,7 +15,7 @@ namespace Shooter
         public Game()
         {
             miniMap = new MiniMap();
-            player = new Player(miniMap);
+            player = new Player();
             window = new Window();
             map = new Map(miniMap, player, window);
         }

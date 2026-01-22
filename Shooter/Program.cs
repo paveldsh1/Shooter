@@ -1,5 +1,6 @@
-﻿using System.Text;
+﻿using Shooter.Repositories;
 using Shooter.Services;
+using System.Text;
 
 namespace Shooter
 {
@@ -9,6 +10,7 @@ namespace Shooter
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddSingleton<PlayerRegistryService>();
+            builder.Services.AddSingleton<PlayerRepository>();
             var app = builder.Build();
 
             // Включаем WebSocket
