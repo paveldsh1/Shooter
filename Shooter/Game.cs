@@ -104,13 +104,15 @@ namespace Shooter
             catch (WebSocketException)
             {
                 // Клиент закрыл соединение без корректного завершения рукопожатия
+                return;
             }
             catch (ObjectDisposedException)
             {
                 // Контекст/сокет уже освобождён — выходим тихо
+                return;
             }
             //window.Render(miniMap);
-            Console.ReadLine();
+            return;
         }
 
         private void Refresh(bool renderWithMiniMap, Player player)
