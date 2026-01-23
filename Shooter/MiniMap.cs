@@ -1,4 +1,6 @@
-﻿namespace Shooter
+﻿using Shooter.Models;
+
+namespace Shooter
 {
     internal class MiniMap
     {

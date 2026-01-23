@@ -89,7 +89,9 @@
 
         function connectWebSocket() {
             const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-            const ws = new WebSocket(protocol + location.host + "/ws");
+            const nickname = nicknameInput.value.trim();
+            const url = `${protocol}${location.host}/ws?nick=${encodeURIComponent(nickname)}`;
+            const ws = new WebSocket(url);
 
             ws.onopen = () => {
                 output.value = "WebSocket connected";
@@ -118,7 +120,7 @@
             });
             if (res.ok) {
                 const data = await res.json();
-                return { ok: true, playerId: data.playerId };
+                return { ok: true };
             }
             return { ok: false, status: res.status, data: await res.json().catch(() => ({})) };
         }
@@ -130,8 +132,7 @@
                 body: JSON.stringify({ nickname })
             });
             if (res.ok) {
-                const data = await res.json();
-                return { ok: true, playerId: data.playerId };
+                return { ok: true };
             }
             return { ok: false, status: res.status, data: await res.json().catch(() => ({})) };
         }

@@ -1,5 +1,8 @@
-﻿using System.Diagnostics;
+﻿using Shooter.Models;
+using Shooter.Repositories;
+using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Numerics;
 using System.Text;
 
 namespace Shooter
@@ -7,17 +10,16 @@ namespace Shooter
     internal class Game
     {
         private MiniMap miniMap;
-        private Player player;
         private Window window;
         private Map map;
         private readonly Stopwatch stopwatch = Stopwatch.StartNew();
         private byte[] buffer = new byte[1024];
+        public bool GameStarted { get; private set; } = false;
+
         public Game()
         {
             miniMap = new MiniMap();
-            player = new Player();
             window = new Window();
-            map = new Map(miniMap, player, window);
         }
 
 		private async Task SendScreenAsync(WebSocket socket)
@@ -32,11 +34,12 @@ namespace Shooter
 				CancellationToken.None);
         }
 
-        public async Task Start(WebSocket socket)
+        public async Task Start(WebSocket socket, Player player) // почему в start switch
         {
             bool closeRequested = false;
             bool mapVisible = true;
-			Refresh(mapVisible);
+            map = new Map(miniMap, player, window);
+            Refresh(mapVisible, player);
 			await SendScreenAsync(socket);
 
             //stopwatch.Restart();
@@ -68,30 +71,30 @@ namespace Shooter
                             closeRequested = true;
                             return;
                         case "KeyW":
-                            player.MoveForward(elapsedSeconds, miniMap);
-                            Refresh(mapVisible);
+                            player.MoveForward(elapsedSeconds, miniMap); //static
+                            Refresh(mapVisible, player);
                             break;
                         case "KeyS":
-                            player.MoveBack(elapsedSeconds, miniMap);
-                            Refresh(mapVisible);
+                            player.MoveBack(elapsedSeconds, miniMap); //static
+                            Refresh(mapVisible, player);
                             break;
                         case "KeyA":
-                            player.MoveLeft(elapsedSeconds);
-                            Refresh(mapVisible);
+                            player.MoveLeft(elapsedSeconds); //static
+                            Refresh(mapVisible, player);
                             break;
                         case "KeyD":
                             player.MoveRight(elapsedSeconds);
-                            Refresh(mapVisible);
+                            Refresh(mapVisible, player);
                             break;
                         case "KeyM":
                             mapVisible = !mapVisible;
                             if (!mapVisible)
                             {
-                                Refresh(renderWithMiniMap: false);
+                                Refresh(renderWithMiniMap: false, player);
                             }
                             else
                             {
-                                Refresh(mapVisible);
+                                Refresh(mapVisible, player);
                             }
                             break;
 					}
@@ -110,7 +113,7 @@ namespace Shooter
             Console.ReadLine();
         }
 
-        private void Refresh(bool renderWithMiniMap)
+        private void Refresh(bool renderWithMiniMap, Player player)
         {
             map.Update(window);
             if (renderWithMiniMap)

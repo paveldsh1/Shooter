@@ -1,4 +1,6 @@
-﻿namespace Shooter
+﻿using Shooter.Models;
+
+namespace Shooter
 {
     internal class Map
     {
@@ -7,10 +9,6 @@
         private const float fov = 3.14159f / 4.0f;
         private MiniMap miniMap;
         private Player player;
-        //public Map()
-        //{
-  
-        //}
 
         public Map(MiniMap miniMap, Player player, Window window)
         {

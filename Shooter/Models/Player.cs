@@ -1,8 +1,9 @@
-﻿namespace Shooter
+﻿namespace Shooter.Models
 {
     internal class Player
     {
-        private readonly string nickname;
+        public string Nickname { get; private set; }
+        public System.Guid PlayerId { get; private set; }
         public float PlayerA { get; private set; }
         public float PlayerX { get; private set; }
         public float PlayerY { get; private set; }
@@ -13,7 +14,7 @@
 
         public Player()
         {
-            nickname = "unknown";
+            Nickname = "unknown";
             PlayerA = 4.71f;
             PlayerX = 3.5f;
             PlayerY = 3.5f;
@@ -21,7 +22,11 @@
 
         public Player(string nickname)
         {
-            this.nickname = nickname;
+            this.Nickname = nickname;
+            this.PlayerId = System.Guid.NewGuid();
+            PlayerA = 4.71f;
+            PlayerX = 3.5f;
+            PlayerY = 3.5f;
         }
 
         //private void CreateFromMap(MiniMap miniMap)
@@ -97,7 +102,7 @@
 
         public void MoveRight(float elapsedSeconds)
         {
-            PlayerA += (speed * rotationSpeed) * elapsedSeconds;
+            PlayerA += speed * rotationSpeed * elapsedSeconds;
             if (PlayerA > (float)Math.PI * 2)
             {
                 PlayerA %= (float)Math.PI * 2;
@@ -106,7 +111,7 @@
 
         public void MoveLeft(float elapsedSeconds)
         {
-            PlayerA -= (speed * rotationSpeed) * elapsedSeconds;
+            PlayerA -= speed * rotationSpeed * elapsedSeconds;
             if (PlayerA < 0)
             {
                 PlayerA %= (float)Math.PI * 2;

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using Shooter.Models;
+using System.Text;
 
 namespace Shooter
 {
