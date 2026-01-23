@@ -94,7 +94,14 @@ namespace Shooter
                 Console.InputEncoding = Encoding.UTF8;
 
                 Game game = new Game();
-                await game.Start(socket, existing);
+                try
+                {
+                    await game.Start(socket, existing);
+                }
+                finally
+                {
+                    repository.RemovePlayer(existing.Nickname);
+                }
             });
 
             app.Run();

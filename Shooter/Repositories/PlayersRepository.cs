@@ -29,6 +29,13 @@ namespace Shooter.Repositories
             return players.TryGetValue(key, out var player) ? player : null;
         }
 
+        public bool RemovePlayer(string nickname)
+        {
+            if (string.IsNullOrWhiteSpace(nickname)) return false;
+            string key = this.NormalizeNickname(nickname);
+            return players.TryRemove(key, out _);
+        }
+
         private string NormalizeNickname(string nickname) => nickname.Trim();
     }
 }

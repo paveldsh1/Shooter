@@ -71,15 +71,15 @@ namespace Shooter
                             closeRequested = true;
                             return;
                         case "KeyW":
-                            player.MoveForward(elapsedSeconds, miniMap); //static
+                            player.MoveForward(elapsedSeconds, miniMap);
                             Refresh(mapVisible, player);
                             break;
                         case "KeyS":
-                            player.MoveBack(elapsedSeconds, miniMap); //static
+                            player.MoveBack(elapsedSeconds, miniMap);
                             Refresh(mapVisible, player);
                             break;
                         case "KeyA":
-                            player.MoveLeft(elapsedSeconds); //static
+                            player.MoveLeft(elapsedSeconds);
                             Refresh(mapVisible, player);
                             break;
                         case "KeyD":
