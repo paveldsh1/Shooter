@@ -1,6 +1,6 @@
 ﻿using Shooter.Models;
 
-namespace Shooter
+namespace Shooter.Game
 {
     internal class MiniMap
     {

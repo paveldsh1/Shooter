@@ -1,7 +1,7 @@
 ﻿using Shooter.Models;
 using System.Text;
 
-namespace Shooter
+namespace Shooter.Game
 {
     internal class Window
     {

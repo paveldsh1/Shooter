@@ -1,4 +1,6 @@
-﻿namespace Shooter.Models
+﻿using Shooter.Game;
+
+namespace Shooter.Models
 {
     internal class Player
     {

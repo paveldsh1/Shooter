@@ -1,3 +1,4 @@
+using Shooter.Game;
 using Shooter.Models;
 using Shooter.Repositories;
 using System.Collections.Concurrent;

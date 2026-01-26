@@ -1,6 +1,6 @@
 ﻿using Shooter.Models;
 
-namespace Shooter
+namespace Shooter.Game
 {
     internal class Map
     {
@@ -25,7 +25,7 @@ namespace Shooter
             {
                 for (int x = 0; x < window.ScreenWidth; x++)
                 {
-                    this.depthBuffer[x, y] = float.MaxValue;
+                    depthBuffer[x, y] = float.MaxValue;
                 }
             }
         }
@@ -39,7 +39,7 @@ namespace Shooter
         {
             for (int x = 0; x < window.ScreenWidth; x++)
             {
-                float rayAngle = (player.PlayerA - fov / 2.0f) + (x / (float)window.ScreenWidth) * fov;
+                float rayAngle = player.PlayerA - fov / 2.0f + x / (float)window.ScreenWidth * fov;
 
                 float stepSize = 0.1f;
                 float distanceToWall = 0.0f;
@@ -73,7 +73,7 @@ namespace Shooter
                                     float vy = (float)testY + ty - player.PlayerY;
                                     float vx = (float)testX + tx - player.PlayerX;
                                     float d = (float)Math.Sqrt(vx * vx + vy * vy);
-                                    float dot = (eyeX * vx / d) + (eyeY * vy / d);
+                                    float dot = eyeX * vx / d + eyeY * vy / d;
                                     p.Add((d, dot));
                                 }
                             }
@@ -85,7 +85,7 @@ namespace Shooter
                         }
                     }
                 }
-                int ceiling = (int)((float)(window.ScreenHeight / 2.0f) - window.ScreenHeight / ((float)distanceToWall));
+                int ceiling = (int)((float)(window.ScreenHeight / 2.0f) - window.ScreenHeight / (float)distanceToWall);
                 int floor = window.ScreenHeight - ceiling;
 
                 for (int y = 0; y < window.ScreenHeight; y++)
@@ -107,7 +107,7 @@ namespace Shooter
                     }
                     else
                     {
-                        float b = 1.0f - ((y - window.ScreenHeight / 2.0f) / (window.ScreenHeight / 2.0f));
+                        float b = 1.0f - (y - window.ScreenHeight / 2.0f) / (window.ScreenHeight / 2.0f);
                         window.Screen[x, y] = b switch
                         {
                             < 0.20f => '●',

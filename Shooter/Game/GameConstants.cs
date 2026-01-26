@@ -1,4 +1,4 @@
-namespace Shooter
+namespace Shooter.Game
 {
     internal static class GameConstants
     {
