@@ -1,5 +1,6 @@
-﻿using Shooter.Models;
+using Shooter.Models;
 using Shooter.Repositories;
+using Shooter.Server;
 using Shooter.Services;
 using System.Text;
 
@@ -11,6 +12,8 @@ namespace Shooter
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddSingleton<PlayersRepository>();
+            builder.Services.AddSingleton<GameHost>();
+            builder.Services.AddHostedService<Shooter.Server.GameLoopService>();
             var app = builder.Build();
 
             // Включаем WebSocket
@@ -64,7 +67,7 @@ namespace Shooter
             });
 
             // WebSocket endpoint
-            app.Map("/ws", async (HttpContext context, PlayersRepository repository) =>
+            app.Map("/ws", async (HttpContext context, PlayersRepository repository, GameHost host) =>
             {
                 string nickname = context.Request.Query["nick"].ToString();
                 if (string.IsNullOrWhiteSpace(nickname)) 
@@ -80,27 +83,25 @@ namespace Shooter
                 }
 
                 // Проверяем, что игрок существует до приёма WebSocket
-                var existing = repository.TryGetPlayer(nickname);
-                if (existing is null)
+                Player? player = repository.TryGetPlayer(nickname);
+                if (player is null)
                 {
                     context.Response.StatusCode = 404;
                     return;
                 }
 
-                using var socket = await context.WebSockets.AcceptWebSocketAsync();
-                Console.WriteLine("Client connected");
-
-                Console.OutputEncoding = Encoding.UTF8;
-                Console.InputEncoding = Encoding.UTF8;
-
-                Game game = new Game();
+                var socket = await context.WebSockets.AcceptWebSocketAsync();
                 try
                 {
-                    await game.Start(socket, existing);
+                    Console.WriteLine("Client connected");
+                    Console.OutputEncoding = Encoding.UTF8;
+                    Console.InputEncoding = Encoding.UTF8;
+
+                    await host.RunSessionAsync(socket, player);
                 }
                 finally
                 {
-                    repository.RemovePlayer(existing.Nickname);
+                    socket?.Dispose();
                 }
             });
 
