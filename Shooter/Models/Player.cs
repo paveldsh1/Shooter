@@ -1,4 +1,4 @@
-﻿using Shooter.Game;
+using Shooter.Game;
 
 namespace Shooter.Models
 {
@@ -119,6 +119,13 @@ namespace Shooter.Models
                 PlayerA %= (float)Math.PI * 2;
                 PlayerA += (float)Math.PI * 2;
             }
+        }
+
+        public void SetState(float x, float y, float a)
+        {
+            PlayerX = x;
+            PlayerY = y;
+            PlayerA = a;
         }
     }
 }

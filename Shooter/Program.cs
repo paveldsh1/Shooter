@@ -3,6 +3,8 @@ using Shooter.Repositories;
 using Shooter.Server;
 using Shooter.Services;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Shooter.Data;
 
 namespace Shooter
 {
@@ -14,9 +16,17 @@ namespace Shooter
             builder.Services.AddSingleton<PlayersRepository>();
             builder.Services.AddSingleton<GameHost>();
             builder.Services.AddHostedService<Shooter.Server.GameLoopService>();
+            var connection = builder.Configuration.GetConnectionString("DefaultConnection");
+            builder.Services.AddDbContext<ApplicationContext>(options => options.UseSqlite(connection ?? "Data Source=app.db"));
+            builder.Services.AddScoped<PlayerStateService>();
             var app = builder.Build();
 
-            // Включаем WebSocket
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+                await db.Database.EnsureCreatedAsync();
+            }
+
             app.UseWebSockets();
 
             app.MapPost("/players/register", async (HttpContext context, PlayersRepository repository) =>
@@ -67,7 +77,7 @@ namespace Shooter
             });
 
             // WebSocket endpoint
-            app.Map("/ws", async (HttpContext context, PlayersRepository repository, GameHost host) =>
+            app.Map("/ws", async (HttpContext context, PlayersRepository repository, GameHost host, PlayerStateService stateService) =>
             {
                 string nickname = context.Request.Query["nick"].ToString();
                 if (string.IsNullOrWhiteSpace(nickname)) 
@@ -88,6 +98,12 @@ namespace Shooter
                 {
                     context.Response.StatusCode = 404;
                     return;
+                }
+                // load persisted state
+                var state = await stateService.LoadAsync(nickname);
+                if (state is not null)
+                {
+                    player.SetState(state.PlayerX, state.PlayerY, state.PlayerA);
                 }
 
                 var socket = await context.WebSockets.AcceptWebSocketAsync();

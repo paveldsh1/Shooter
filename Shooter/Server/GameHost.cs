@@ -9,12 +9,14 @@ namespace Shooter.Server
     internal class GameHost
     {
         private readonly PlayersRepository playersRepository;
+        private readonly IServiceScopeFactory scopeFactory;
         private readonly ConcurrentDictionary<string, GameSession> sessions = new(StringComparer.OrdinalIgnoreCase);
         private readonly MiniMap sharedMiniMap = new MiniMap();
 
-        public GameHost(PlayersRepository playersRepository)
+        public GameHost(PlayersRepository playersRepository, IServiceScopeFactory scopeFactory)
         {
             this.playersRepository = playersRepository;
+            this.scopeFactory = scopeFactory;
         }
 
         public bool HasSession(string nickname) =>
@@ -42,6 +44,14 @@ namespace Shooter.Server
             }
             finally
             {
+                try
+                {
+                    using var scope = scopeFactory.CreateScope();
+                    var stateService = scope.ServiceProvider.GetRequiredService<Shooter.Services.PlayerStateService>();
+                    await stateService.SaveAsync(player, CancellationToken.None);
+                }
+                catch { /* ignore persistence errors */ }
+
                 sessions.TryRemove(key, out _);
                 playersRepository.RemovePlayer(player.Nickname);
             }

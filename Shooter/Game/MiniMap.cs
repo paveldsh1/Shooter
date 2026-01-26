@@ -6,7 +6,7 @@ namespace Shooter.Game
     {
         private const byte height = 10, width = 20;
 
-        public char[][] Map { get; private set; }
+        public char[][] Map { get; private set; } = Array.Empty<char[]>();
 
         public MiniMap()
         {
