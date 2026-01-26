@@ -13,6 +13,7 @@ namespace Shooter.Server
         public Window Window { get; }
         public Map Map { get; }
         public MiniMap SharedMiniMap { get; }
+        public volatile bool MiniMapVisible = true;
 
         private readonly byte[] receiveBuffer = new byte[1024];
 
@@ -47,6 +48,7 @@ namespace Shooter.Server
                         case "KeyS": Player.MoveBack(dt, SharedMiniMap); break;
                         case "KeyA": Player.MoveLeft(dt); break;
                         case "KeyD": Player.MoveRight(dt); break;
+                        case "KeyM": MiniMapVisible = !MiniMapVisible; break;
                         default: break;
                     }
                 }

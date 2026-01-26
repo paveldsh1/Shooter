@@ -49,8 +49,15 @@ namespace Shooter.Server
 
             // Обновляем рендер для конкретного игрока
             session.Map.Update(session.Window);
-            // Наложение миникарты поверх кадра
-            session.Window.Render(session.SharedMiniMap, session.Player);
+            // Наложение миникарты по флагу
+            if (session.MiniMapVisible)
+            {
+                session.Window.Render(session.SharedMiniMap, session.Player);
+            }
+            else
+            {
+                session.Window.Render();
+            }
             var text = Window.ToText(session.Window.Screen);
             var bytes = Encoding.UTF8.GetBytes(text);
             try
