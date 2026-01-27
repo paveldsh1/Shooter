@@ -1,9 +1,9 @@
-﻿using Shooter.Models;
+using Shooter.Models;
 using System.Text;
 
 namespace Shooter.Game
 {
-    internal class Window
+    internal sealed class Window
     {
         public int ScreenWidth { get; }
         public int ScreenHeight { get; }
@@ -13,10 +13,17 @@ namespace Shooter.Game
 
         public Window()
         {
-            ScreenWidth = 120;
-            ScreenHeight = 40;
+            ScreenWidth = GameConstants.ScreenWidth;
+            ScreenHeight = GameConstants.ScreenHeight;
             Screen = new char[ScreenWidth, ScreenHeight];
-            Console.SetWindowSize(ScreenWidth, ScreenHeight);
+            try
+            {
+                Console.SetWindowSize(ScreenWidth, ScreenHeight);
+            }
+            catch
+            {
+                // Игровой сервер может работать без реального консольного окна
+            }
         }
 
         public void Render(MiniMap? miniMap = null, Player? player = null)
@@ -60,14 +67,14 @@ namespace Shooter.Game
         {
             int rows = grid.GetLength(1);
             int cols = grid.GetLength(0);
-            StringBuilder result = new StringBuilder();
+            var result = new StringBuilder(rows * (cols + 1));
             for(int y = 0; y < rows; ++y)
             {
                 for(int x = 0; x < cols; ++x)
                 {
                     result.Append(grid[x, y]);
                 }
-                if (y < grid.GetLength(1) - 1)
+                if (y < rows - 1)
                 {
                     result.AppendLine();
                 }

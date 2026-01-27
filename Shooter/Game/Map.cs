@@ -1,14 +1,12 @@
-﻿using Shooter.Models;
+using Shooter.Models;
 
 namespace Shooter.Game
 {
-    internal class Map
+    internal sealed class Map
     {
-        private float[,] depthBuffer;
-        private const float depth = 16.0f;
-        private const float fov = 3.14159f / 4.0f;
-        private MiniMap miniMap;
-        private Player player;
+        private readonly float[,] depthBuffer;
+        private readonly MiniMap miniMap;
+        private readonly Player player;
 
         public Map(MiniMap miniMap, Player player, Window window)
         {
@@ -39,7 +37,8 @@ namespace Shooter.Game
         {
             for (int x = 0; x < window.ScreenWidth; x++)
             {
-                float rayAngle = player.PlayerA - fov / 2.0f + x / (float)window.ScreenWidth * fov;
+                float rayAngle = player.PlayerA - GameConstants.FieldOfView / 2.0f
+                                 + x / (float)window.ScreenWidth * GameConstants.FieldOfView;
 
                 float stepSize = 0.1f;
                 float distanceToWall = 0.0f;
@@ -50,7 +49,7 @@ namespace Shooter.Game
                 float eyeX = (float)Math.Cos(rayAngle);
                 float eyeY = (float)Math.Sin(rayAngle);
 
-                while (!hitWall && distanceToWall < depth)
+                while (!hitWall && distanceToWall < GameConstants.MaxDepth)
                 {
                     distanceToWall += stepSize;
                     int testX = (int)(player.PlayerX + eyeX * distanceToWall);
@@ -58,7 +57,7 @@ namespace Shooter.Game
                     if (testY < 0 || testY >= miniMap.Map.Length || testX < 0 || testX >= miniMap.Map[testY].Length)
                     {
                         hitWall = true;
-                        distanceToWall = depth;
+                        distanceToWall = GameConstants.MaxDepth;
                     }
                     else
                     {
@@ -85,7 +84,7 @@ namespace Shooter.Game
                         }
                     }
                 }
-                int ceiling = (int)((float)(window.ScreenHeight / 2.0f) - window.ScreenHeight / (float)distanceToWall);
+                int ceiling = (int)((window.ScreenHeight / 2.0f) - window.ScreenHeight / distanceToWall);
                 int floor = window.ScreenHeight - ceiling;
 
                 for (int y = 0; y < window.ScreenHeight; y++)
@@ -100,9 +99,9 @@ namespace Shooter.Game
                     {
                         window.Screen[x, y] =
                             boundary ? ' ' :
-                            distanceToWall < depth / 3.00f ? '█' :
-                            distanceToWall < depth / 1.75f ? '■' :
-                            distanceToWall < depth / 1.00f ? '▪' :
+                            distanceToWall < GameConstants.MaxDepth / 3.00f ? '█' :
+                            distanceToWall < GameConstants.MaxDepth / 1.75f ? '■' :
+                            distanceToWall < GameConstants.MaxDepth / 1.00f ? '▪' :
                             ' ';
                     }
                     else
