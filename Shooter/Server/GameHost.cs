@@ -1,6 +1,7 @@
 using Shooter.Game;
 using Shooter.Models;
 using Shooter.Repositories;
+using System;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
@@ -12,6 +13,7 @@ namespace Shooter.Server
         private readonly IServiceScopeFactory scopeFactory;
         private readonly ConcurrentDictionary<string, GameSession> sessions = new(StringComparer.OrdinalIgnoreCase);
         private readonly MiniMap sharedMiniMap = new MiniMap();
+        private readonly ConcurrentDictionary<string, PlayerSnapshot> snapshots = new(StringComparer.OrdinalIgnoreCase);
 
         public GameHost(PlayersRepository playersRepository, IServiceScopeFactory scopeFactory)
         {
@@ -25,6 +27,16 @@ namespace Shooter.Server
         public IReadOnlyCollection<GameSession> GetSessionsSnapshot()
             => sessions.Values.ToList();
 
+        public IReadOnlyCollection<PlayerSnapshot> GetPlayerSnapshots()
+            => snapshots.Values.ToList();
+
+        public void UpsertSnapshot(string nickname, float x, float y, float a)
+        {
+            var key = nickname.Trim();
+            snapshots.AddOrUpdate(key, new PlayerSnapshot(key, x, y, a, DateTime.UtcNow),
+                (_, __) => new PlayerSnapshot(key, x, y, a, DateTime.UtcNow));
+        }
+
         public async Task RunSessionAsync(WebSocket socket, Player player)
         {
             var key = player.Nickname.Trim();
@@ -35,7 +47,10 @@ namespace Shooter.Server
                 catch { /* ignore */ }
             }
 
-            var session = new GameSession(player.Nickname, socket, player, sharedMiniMap);
+            // первичная фиксация позиции подключившегося игрока
+            UpsertSnapshot(player.Nickname, player.PlayerX, player.PlayerY, player.PlayerA);
+
+            var session = new GameSession(player.Nickname, socket, player, sharedMiniMap, (n, x, y, a) => UpsertSnapshot(n, x, y, a));
             sessions[key] = session;
 
             try
@@ -53,9 +68,12 @@ namespace Shooter.Server
                 catch { /* ignore persistence errors */ }
 
                 sessions.TryRemove(key, out _);
+                snapshots.TryRemove(key, out _);
                 playersRepository.RemovePlayer(player.Nickname);
             }
         }
+
+        internal readonly record struct PlayerSnapshot(string Nickname, float X, float Y, float A, DateTime UpdatedAt);
     }
 }
 

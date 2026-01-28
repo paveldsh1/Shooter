@@ -7,10 +7,12 @@ namespace Shooter.Game
         private readonly float[,] depthBuffer;
         private readonly MiniMap miniMap;
         private readonly Player player;
+        public float[] ColumnDepths { get; }
 
         public Map(MiniMap miniMap, Player player, Window window)
         {
             depthBuffer = new float[window.ScreenWidth, window.ScreenHeight];
+            ColumnDepths = new float[window.ScreenWidth];
             this.miniMap = miniMap;
             this.player = player;
             InitDepthBuffer(window);
@@ -86,6 +88,8 @@ namespace Shooter.Game
                 }
                 int ceiling = (int)((window.ScreenHeight / 2.0f) - window.ScreenHeight / distanceToWall);
                 int floor = window.ScreenHeight - ceiling;
+
+                ColumnDepths[x] = distanceToWall;
 
                 for (int y = 0; y < window.ScreenHeight; y++)
                 {

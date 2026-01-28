@@ -14,17 +14,22 @@ namespace Shooter.Server
         public Map Map { get; }
         public MiniMap SharedMiniMap { get; }
         public volatile bool MiniMapVisible = true;
+        private readonly Action<string, float, float, float> positionUpdated;
 
         private readonly byte[] receiveBuffer = new byte[1024];
 
-        public GameSession(string nickname, WebSocket socket, Player player, MiniMap sharedMiniMap)
+        public GameSession(string nickname, WebSocket socket, Player player, MiniMap sharedMiniMap, Action<string, float, float, float> positionUpdated)
         {
             Nickname = nickname;
             Socket = socket;
             Player = player;
             SharedMiniMap = sharedMiniMap;
+            this.positionUpdated = positionUpdated;
             Window = new Window();
             Map = new Map(sharedMiniMap, player, Window);
+
+            // начальный снимок
+            this.positionUpdated?.Invoke(Nickname, Player.PlayerX, Player.PlayerY, Player.PlayerA);
         }
 
         public async Task RunReceiveLoopAsync(CancellationToken cancellationToken)
@@ -44,10 +49,10 @@ namespace Shooter.Server
                     switch (key)
                     {
                         case "Escape": return;
-                        case "KeyW": Player.MoveForward(dt, SharedMiniMap); break;
-                        case "KeyS": Player.MoveBack(dt, SharedMiniMap); break;
-                        case "KeyA": Player.MoveLeft(dt); break;
-                        case "KeyD": Player.MoveRight(dt); break;
+                        case "KeyW": Player.MoveForward(dt, SharedMiniMap); Notify(); break;
+                        case "KeyS": Player.MoveBack(dt, SharedMiniMap); Notify(); break;
+                        case "KeyA": Player.MoveLeft(dt); Notify(); break;
+                        case "KeyD": Player.MoveRight(dt); Notify(); break;
                         case "KeyM": MiniMapVisible = !MiniMapVisible; break;
                         default: break;
                     }
@@ -66,6 +71,8 @@ namespace Shooter.Server
                 // socket disposed
             }
         }
+
+        private void Notify() => positionUpdated?.Invoke(Nickname, Player.PlayerX, Player.PlayerY, Player.PlayerA);
     }
 }
 

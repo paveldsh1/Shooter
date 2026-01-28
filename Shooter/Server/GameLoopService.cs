@@ -1,4 +1,5 @@
 using Shooter.Game;
+using Shooter.Game.Assets;
 using System.Net.WebSockets;
 using System.Text;
 
@@ -43,12 +44,77 @@ namespace Shooter.Server
             }
         }
 
-        private static async Task RenderAndSendAsync(GameSession session, CancellationToken ct)
+        private async Task RenderAndSendAsync(GameSession session, CancellationToken ct)
         {
             if (session.Socket.State != WebSocketState.Open) return;
 
             // Обновляем рендер для конкретного игрока
             session.Map.Update(session.Window);
+
+            // Нарисовать других игроков как спрайты с простым Z‑тестом
+            var others = host.GetPlayerSnapshots();
+            if (others.Count > 0)
+            {
+                foreach (var snap in others)
+                {
+                    if (string.Equals(snap.Nickname, session.Nickname, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    float dx = snap.X - session.Player.PlayerX;
+                    float dy = snap.Y - session.Player.PlayerY;
+                    float angle = MathF.Atan2(dy, dx);
+                    if (angle < 0) angle += 2f * MathF.PI;
+                    float distance = MathF.Sqrt(dx * dx + dy * dy);
+
+                    // Отбрасываем сильно дальних
+                    if (distance <= 0.05f || distance > GameConstants.MaxDepth) continue;
+
+                    float fovA = session.Player.PlayerA - GameConstants.FieldOfView / 2f;
+                    if (fovA < 0) fovA += 2f * MathF.PI;
+                    float diff = angle < fovA && fovA - 2f * MathF.PI + GameConstants.FieldOfView > angle
+                        ? angle + 2f * MathF.PI - fovA
+                        : angle - fovA;
+                    if (diff < 0 || diff > GameConstants.FieldOfView) continue; // вне экрана
+
+                    float ratio = diff / GameConstants.FieldOfView;
+                    int enemyScreenX = (int)(session.Window.ScreenWidth * ratio);
+
+                    // Выбор кадра по расстоянию
+                    string[] enemySprite =
+                        distance <= 1f ? EnemySprites.EnemySprite8 :
+                        distance <= 2f ? EnemySprites.EnemySprite7 :
+                        distance <= 3f ? EnemySprites.EnemySprite6 :
+                        distance <= 4f ? EnemySprites.EnemySprite5 :
+                        distance <= 5f ? EnemySprites.EnemySprite4 :
+                        distance <= 6f ? EnemySprites.EnemySprite3 :
+                        distance <= 7f ? EnemySprites.EnemySprite2 :
+                        EnemySprites.EnemySprite1;
+
+                    int ceiling = (int)(session.Window.ScreenHeight / 2.0f - session.Window.ScreenHeight / distance);
+                    int floor = session.Window.ScreenHeight - ceiling;
+                    int enemyScreenY = Math.Min(floor, session.Window.ScreenHeight);
+
+                    for (int y = 0; y < enemySprite.Length; y++)
+                    {
+                        var row = enemySprite[y];
+                        for (int x = 0; x < row.Length; x++)
+                        {
+                            char ch = row[x];
+                            if (ch == '!') continue; // прозрачность
+                            int screenX = x - row.Length / 2 + enemyScreenX;
+                            int screenY = y - enemySprite.Length + enemyScreenY;
+                            if (screenX < 0 || screenX >= session.Window.ScreenWidth ||
+                                screenY < 0 || screenY >= session.Window.ScreenHeight)
+                                continue;
+                            // Z‑test: если игрок ближе стены на этом столбце
+                            if (screenX < session.Map.ColumnDepths.Length &&
+                                distance < session.Map.ColumnDepths[screenX])
+                            {
+                                session.Window.Screen[screenX, screenY] = ch;
+                            }
+                        }
+                    }
+                }
+            }
             // Наложение миникарты по флагу
             if (session.MiniMapVisible)
             {
