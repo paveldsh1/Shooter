@@ -1,4 +1,4 @@
-﻿using Shooter.Models;
+using Shooter.Models;
 
 namespace Shooter.Game
 {
@@ -25,7 +25,6 @@ namespace Shooter.Game
                     else
                     {
                         Map[i][j] = ' '; // TODO RandomService.GetRandomField();
-                        if(i == 3 && j == 3) Map[i][j] = '^'; // TODO
                     }
                 }
             }
@@ -49,7 +48,7 @@ namespace Shooter.Game
             {
                 for (int j = 0; j < Map[i].Length; ++j)
                 {
-                    if (Map[i][j] is 'v' or '<' or '^' or '>')
+                    if (Map[i][j] is 'v' or '<' or '^' or '>' or '.')
                     {
                         Map[i][j] = ' ';
                         return;
@@ -61,11 +60,6 @@ namespace Shooter.Game
         public void Update(Player player)
         {
             DeleteMarker();
-            // нормализуем угол в диапазон [0, 2π)
-            float angle = player.PlayerA % (2 * MathF.PI);
-            if (angle < 0) angle += 2 * MathF.PI;
-
-            // Преобразуем координаты игрока в индекс ячейки карты
             int testX = (int)player.PlayerX;
             int testY = (int)player.PlayerY;
 
@@ -73,12 +67,20 @@ namespace Shooter.Game
             if (testY < 0 || testY >= Map.Length) return;
             if (testX < 0 || testX >= Map[testY].Length) return;
 
-            Map[testY][testX] = angle switch
+            Map[testY][testX] = '.';
+        }
+
+        public static char GetDirectionMarker(float angle)
+        {
+            float normalized = angle % (2 * MathF.PI);
+            if (normalized < 0) normalized += 2 * MathF.PI;
+
+            return normalized switch
             {
-                >= MathF.PI / 4f and < 3f * MathF.PI / 4f => 'v',   // между 45° и 135°
-                >= 3f * MathF.PI / 4f and < 5f * MathF.PI / 4f => '<', // между 135° и 225°
-                >= 5f * MathF.PI / 4f and < 7f * MathF.PI / 4f => '^', // между 225° и 315°
-                _ => '>', // остальной сектор (от 315° до 45°) — вправо
+                >= MathF.PI / 4f and < 3f * MathF.PI / 4f => 'v',     // 45°..135°
+                >= 3f * MathF.PI / 4f and < 5f * MathF.PI / 4f => '<', // 135°..225°
+                >= 5f * MathF.PI / 4f and < 7f * MathF.PI / 4f => '^', // 225°..315°
+                _ => '>',                                             // 315°..45°
             };
         }
     }

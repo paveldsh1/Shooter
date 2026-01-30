@@ -9,8 +9,6 @@ namespace Shooter.Game
         public int ScreenHeight { get; }
         public char[,] Screen { get; private set; }
 
-        private bool firstMiniMapRender = true;
-
         public Window()
         {
             ScreenWidth = GameConstants.ScreenWidth;
@@ -26,13 +24,25 @@ namespace Shooter.Game
             }
         }
 
-        public void Render(MiniMap? miniMap = null, Player? player = null)
+        public void Render(
+            MiniMap? miniMap = null,
+            Player? player = null,
+            IReadOnlyCollection<(float X, float Y, float A)>? otherPlayers = null)
         {
-            if (miniMap != null && player != null)
+            if (miniMap != null)
             {
-                if (!firstMiniMapRender) miniMap.Update(player);
-                else firstMiniMapRender = !firstMiniMapRender;
                 AddMiniMapToScreen(miniMap);
+                if (otherPlayers != null)
+                {
+                    foreach (var other in otherPlayers)
+                    {
+                        AddMiniMapMarker(miniMap, other.X, other.Y, MiniMap.GetDirectionMarker(other.A));
+                    }
+                }
+                if (player != null)
+                {
+                    AddMiniMapMarker(miniMap, player.PlayerX, player.PlayerY, '.');
+                }
             }
             //StringBuilder render = new();
             //for (int y = 0; y < Screen.GetLength(1); y++)
@@ -62,6 +72,20 @@ namespace Shooter.Game
                 }
             }
         }
+
+        private void AddMiniMapMarker(MiniMap miniMap, float x, float y, char marker)
+        {
+            int testX = (int)x;
+            int testY = (int)y;
+
+            if (testY < 0 || testY >= miniMap.Map.Length) return;
+            if (testX < 0 || testX >= miniMap.Map[testY].Length) return;
+            if (IsWallCell(miniMap.Map[testY][testX])) return;
+
+            Screen[testX, testY] = marker;
+        }
+
+        private static bool IsWallCell(char cell) => cell is '#' or '█';
 
         public static string ToText(char[,] grid)
         {

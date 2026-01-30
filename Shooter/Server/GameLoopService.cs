@@ -53,11 +53,15 @@ namespace Shooter.Server
 
             // Нарисовать других игроков как спрайты с простым Z‑тестом
             var others = host.GetPlayerSnapshots();
+            List<(float X, float Y, float A)>? miniMapOthers = null;
             if (others.Count > 0)
             {
+                miniMapOthers = new List<(float X, float Y, float A)>(others.Count);
                 foreach (var snap in others)
                 {
                     if (string.Equals(snap.Nickname, session.Nickname, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    miniMapOthers.Add((snap.X, snap.Y, snap.A));
 
                     float dx = snap.X - session.Player.PlayerX;
                     float dy = snap.Y - session.Player.PlayerY;
@@ -114,11 +118,12 @@ namespace Shooter.Server
                         }
                     }
                 }
+                if (miniMapOthers.Count == 0) miniMapOthers = null;
             }
             // Наложение миникарты по флагу
             if (session.MiniMapVisible)
             {
-                session.Window.Render(session.SharedMiniMap, session.Player);
+                session.Window.Render(session.SharedMiniMap, session.Player, miniMapOthers);
             }
             else
             {
