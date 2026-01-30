@@ -10,11 +10,12 @@ namespace Shooter.Server
         public string Nickname { get; }
         public WebSocket Socket { get; }
         public Player Player { get; }
-        public Window Window { get; }
-        public Map Map { get; }
+        public Window Window { get; private set; }
+        public Map Map { get; private set; }
         public MiniMap SharedMiniMap { get; }
         public volatile bool MiniMapVisible = true;
         private readonly Action<string, float, float, float> positionUpdated;
+        private readonly object renderLock = new();
 
         private readonly byte[] receiveBuffer = new byte[1024];
 
@@ -24,7 +25,7 @@ namespace Shooter.Server
             Socket = socket;
             Player = player;
             SharedMiniMap = sharedMiniMap;
-            this.positionUpdated = positionUpdated;
+            this.positionUpdated = positionUpdated ?? ((_, _, _, _) => { });
             Window = new Window();
             Map = new Map(sharedMiniMap, player, Window);
 
@@ -45,6 +46,10 @@ namespace Shooter.Server
                     }
 
                     var key = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                    if (TryHandleResize(key))
+                    {
+                        continue;
+                    }
                     const float dt = 0.05f;
                     switch (key)
                     {
@@ -73,6 +78,36 @@ namespace Shooter.Server
         }
 
         private void Notify() => positionUpdated?.Invoke(Nickname, Player.PlayerX, Player.PlayerY, Player.PlayerA);
+
+        public object RenderLock => renderLock;
+
+        private bool TryHandleResize(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return false;
+            if (!message.StartsWith("RESIZE", StringComparison.OrdinalIgnoreCase)) return false;
+
+            var parts = message.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3) return true;
+
+            if (!int.TryParse(parts[1], out int cols) || !int.TryParse(parts[2], out int rows))
+            {
+                return true;
+            }
+
+            cols = Math.Clamp(cols, Window.MinCols, Window.MaxCols);
+            rows = Math.Clamp(rows, Window.MinRows, Window.MaxRows);
+
+            if (cols == Window.ScreenWidth && rows == Window.ScreenHeight) return true;
+
+            lock (renderLock)
+            {
+                var newWindow = new Window(cols, rows);
+                var newMap = new Map(SharedMiniMap, Player, newWindow);
+                Window = newWindow;
+                Map = newMap;
+            }
+            return true;
+        }
     }
 }
 

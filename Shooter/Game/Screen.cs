@@ -1,18 +1,24 @@
 using Shooter.Models;
+using System;
 using System.Text;
 
 namespace Shooter.Game
 {
     internal sealed class Window
     {
+        public const int MinCols = 40;
+        public const int MinRows = 20;
+        public const int MaxCols = 300;
+        public const int MaxRows = 120;
+
         public int ScreenWidth { get; }
         public int ScreenHeight { get; }
         public char[,] Screen { get; private set; }
 
-        public Window()
+        public Window(int width = GameConstants.ScreenWidth, int height = GameConstants.ScreenHeight)
         {
-            ScreenWidth = GameConstants.ScreenWidth;
-            ScreenHeight = GameConstants.ScreenHeight;
+            ScreenWidth = Math.Clamp(width, MinCols, MaxCols);
+            ScreenHeight = Math.Clamp(height, MinRows, MaxRows);
             Screen = new char[ScreenWidth, ScreenHeight];
             try
             {
@@ -60,6 +66,24 @@ namespace Shooter.Game
             //Console.SetCursorPosition(0, 0);
             //string str = render.ToString();
             //Console.Write(render);
+        }
+
+        public void DrawName(string nickname, int centerX, int nameY, float distance, float[] columnDepths)
+        {
+            if (string.IsNullOrWhiteSpace(nickname)) return;
+            if (nameY < 0 || nameY >= ScreenHeight) return;
+
+            string label = nickname.Trim();
+            int startX = centerX - label.Length / 2;
+            for (int i = 0; i < label.Length; i++)
+            {
+                int x = startX + i;
+                if (x < 0 || x >= ScreenWidth) continue;
+                if (x < columnDepths.Length && distance < columnDepths[x])
+                {
+                    Screen[x, nameY] = label[i];
+                }
+            }
         }
         
         private void AddMiniMapToScreen(MiniMap miniMap)

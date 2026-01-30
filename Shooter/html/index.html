@@ -4,6 +4,13 @@
     <meta charset="utf-8">
     <title>CS 1.0</title>
     <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
         body {
             background: black;
             color: #00ff00;
@@ -48,9 +55,9 @@
         }
 
         textarea {
-            width: 120ch; /* 120 columns */
-            height: calc(40 * 1em); /* 40 rows */
-            line-height: 1em;
+            width: 100vw;
+            height: 100vh;
+            line-height: 1;
             background: black;
             color: #00ff00;
             border: none;
@@ -59,6 +66,7 @@
             overflow: hidden;
             font-family: inherit;
             font-size: 14px;
+            display: block;
         }
 
         input {
@@ -78,7 +86,7 @@
         </div>
     </div>
 
-    <textarea id="output" readonly rows="40" cols="120" wrap="off" spellcheck="false"></textarea><br />
+    <textarea id="output" readonly rows="40" cols="120" wrap="off" spellcheck="false"></textarea>
 
     <script>
         const output = document.getElementById("output");
@@ -87,14 +95,64 @@
         const nicknameInput = document.getElementById("nickname");
         const errorBox = document.getElementById("error");
 
+        let ws = null;
+        let lastCols = 0;
+        let lastRows = 0;
+        let scale = 1;
+        const baseFontSize = 14;
+        const measure = document.createElement("span");
+        measure.textContent = "W";
+        measure.style.position = "absolute";
+        measure.style.visibility = "hidden";
+        measure.style.whiteSpace = "pre";
+        document.body.appendChild(measure);
+
+        function applyScale() {
+            output.style.fontSize = `${Math.round(baseFontSize * scale)}px`;
+            scheduleResize();
+        }
+
+        function getCharSize() {
+            const style = getComputedStyle(output);
+            measure.style.fontFamily = style.fontFamily;
+            measure.style.fontSize = style.fontSize;
+            measure.style.lineHeight = style.lineHeight;
+            const rect = measure.getBoundingClientRect();
+            return { w: rect.width || 1, h: rect.height || 1 };
+        }
+
+        function resizeAndSend() {
+            const { w, h } = getCharSize();
+            const rect = output.getBoundingClientRect();
+            const cols = Math.max(20, Math.floor(rect.width / w));
+            const rows = Math.max(10, Math.floor(rect.height / h));
+            if (cols === lastCols && rows === lastRows) return;
+            lastCols = cols;
+            lastRows = rows;
+            output.cols = cols;
+            output.rows = rows;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(`RESIZE ${cols} ${rows}`);
+            }
+        }
+
+        let resizeTimer = null;
+        function scheduleResize() {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(resizeAndSend, 50);
+        }
+
+        window.addEventListener("resize", scheduleResize);
+
         function connectWebSocket() {
             const protocol = location.protocol === "https:" ? "wss://" : "ws://";
             const nickname = nicknameInput.value.trim();
             const url = `${protocol}${location.host}/ws?nick=${encodeURIComponent(nickname)}`;
-            const ws = new WebSocket(url);
+            ws = new WebSocket(url);
 
             ws.onopen = () => {
                 output.value = "WebSocket connected";
+                resizeAndSend();
             };
 
             ws.onmessage = async e => {
@@ -110,6 +168,22 @@
             };
 
             document.addEventListener("keydown", e => {
+                if (overlay.style.display !== "none") return;
+                if (e.code === "BracketLeft") {
+                    scale = Math.max(0.5, scale - 0.1);
+                    applyScale();
+                    return;
+                }
+                if (e.code === "BracketRight") {
+                    scale = Math.min(3, scale + 0.1);
+                    applyScale();
+                    return;
+                }
+                if (e.code === "Digit0") {
+                    scale = 1;
+                    applyScale();
+                    return;
+                }
                 if (ws.readyState === WebSocket.OPEN) {
                     ws.send(e.code);
                 }
@@ -153,6 +227,7 @@
                     //localStorage.setItem("nickname", nickname);
                     //localStorage.setItem("playerId", reg.playerId);
                     overlay.style.display = "none";
+                    applyScale();
                     connectWebSocket();
                     return;
                 }
@@ -162,6 +237,7 @@
                         //localStorage.setItem("nickname", nickname);
                         //localStorage.setItem("playerId", lg.playerId);
                         overlay.style.display = "none";
+                        applyScale();
                         connectWebSocket();
                         return;
                     }
