@@ -3,8 +3,6 @@ using Shooter.Repositories;
 using Shooter.Server;
 using Shooter.Services;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Shooter.Data;
 
 namespace Shooter
 {
@@ -16,16 +14,12 @@ namespace Shooter
             builder.Services.AddSingleton<PlayersRepository>();
             builder.Services.AddSingleton<GameHost>();
             builder.Services.AddHostedService<Shooter.Server.GameLoopService>();
-            var connection = builder.Configuration.GetConnectionString("DefaultConnection");
-            builder.Services.AddDbContext<ApplicationContext>(options => options.UseSqlite(connection ?? "Data Source=app.db"));
-            builder.Services.AddScoped<PlayerStateService>();
-            var app = builder.Build();
-
-            using (var scope = app.Services.CreateScope())
+            builder.Services.AddHttpClient<PlayerStateApiClient>(client =>
             {
-                var db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-                await db.Database.EnsureCreatedAsync();
-            }
+                var baseUrl = builder.Configuration["PlayerStateApi:BaseUrl"] ?? "http://localhost:51360";
+                client.BaseAddress = new Uri(baseUrl);
+            });
+            var app = builder.Build();
 
             app.UseWebSockets();
 
@@ -77,7 +71,7 @@ namespace Shooter
             });
 
             // WebSocket endpoint
-            app.Map("/ws", async (HttpContext context, PlayersRepository repository, GameHost host, PlayerStateService stateService) =>
+            app.Map("/ws", async (HttpContext context, PlayersRepository repository, GameHost host, PlayerStateApiClient stateClient) =>
             {
                 string nickname = context.Request.Query["nick"].ToString();
                 if (string.IsNullOrWhiteSpace(nickname))
@@ -100,7 +94,7 @@ namespace Shooter
                     return;
                 }
                 // load persisted state
-                var state = await stateService.LoadAsync(nickname);
+                var state = await stateClient.LoadAsync(nickname);
                 if (state is not null && host.IsWalkable(state.PlayerX, state.PlayerY))
                 {
                     player.SetState(state.PlayerX, state.PlayerY, state.PlayerA);

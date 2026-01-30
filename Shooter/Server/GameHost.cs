@@ -1,6 +1,7 @@
 using Shooter.Game;
 using Shooter.Models;
 using Shooter.Repositories;
+using Shooter.Services;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
@@ -9,15 +10,15 @@ namespace Shooter.Server
     internal class GameHost
     {
         private readonly PlayersRepository playersRepository;
-        private readonly IServiceScopeFactory scopeFactory;
+        private readonly PlayerStateApiClient stateClient;
         private readonly ConcurrentDictionary<string, GameSession> sessions = new(StringComparer.OrdinalIgnoreCase);
         private readonly MiniMap sharedMiniMap = new MiniMap();
         private readonly ConcurrentDictionary<string, PlayerSnapshot> snapshots = new(StringComparer.OrdinalIgnoreCase);
 
-        public GameHost(PlayersRepository playersRepository, IServiceScopeFactory scopeFactory)
+        public GameHost(PlayersRepository playersRepository, PlayerStateApiClient stateClient)
         {
             this.playersRepository = playersRepository;
-            this.scopeFactory = scopeFactory;
+            this.stateClient = stateClient;
         }
 
         public bool HasSession(string nickname) =>
@@ -245,9 +246,7 @@ namespace Shooter.Server
             {
                 try
                 {
-                    using var scope = scopeFactory.CreateScope();
-                    var stateService = scope.ServiceProvider.GetRequiredService<Shooter.Services.PlayerStateService>();
-                    await stateService.SaveAsync(player, CancellationToken.None);
+                    await stateClient.SaveAsync(player, CancellationToken.None);
                 }
                 catch { /* ignore persistence errors */ }
 

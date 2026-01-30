@@ -145,18 +145,6 @@ namespace Shooter.Game
             }
         }
 
-        public void PrintMiniMap()
-        {
-            for (int i = 0; i < height; ++i)
-            {
-                for (int j = 0; j < width; ++j)
-                {
-                    Console.Write(Map[i][j]);
-                }
-                Console.WriteLine();
-            }
-        }
-
         public static char GetDirectionMarker(float angle)
         {
             float normalized = angle % (2 * MathF.PI);
