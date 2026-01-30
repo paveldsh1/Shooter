@@ -10,6 +10,8 @@ namespace Shooter.Server
     {
         private const float MinScale = 0.5f;
         private const float MaxScale = 3.0f;
+        private static readonly TimeSpan PistolShotDuration = TimeSpan.FromMilliseconds(200);
+        private static readonly TimeSpan ShotgunShotDuration = TimeSpan.FromMilliseconds(500);
         public string Nickname { get; }
         public WebSocket Socket { get; }
         public Player Player { get; }
@@ -18,18 +20,29 @@ namespace Shooter.Server
         public MiniMap SharedMiniMap { get; }
         public volatile bool MiniMapVisible = true;
         private readonly Action<string, float, float, float> positionUpdated;
+        private readonly Action<string, float, float, float, int, int, float> shotFired;
         private readonly object renderLock = new();
         public float ViewScale { get; private set; } = 1.0f;
+        public WeaponType EquippedWeapon { get; private set; } = WeaponType.Pistol;
+        private DateTime lastShotAtUtc = DateTime.MinValue;
+        public bool IsShooting => DateTime.UtcNow - lastShotAtUtc <= GetShotDuration(EquippedWeapon);
 
         private readonly byte[] receiveBuffer = new byte[1024];
 
-        public GameSession(string nickname, WebSocket socket, Player player, MiniMap sharedMiniMap, Action<string, float, float, float> positionUpdated)
+        public GameSession(
+            string nickname,
+            WebSocket socket,
+            Player player,
+            MiniMap sharedMiniMap,
+            Action<string, float, float, float> positionUpdated,
+            Action<string, float, float, float, int, int, float> shotFired)
         {
             Nickname = nickname;
             Socket = socket;
             Player = player;
             SharedMiniMap = sharedMiniMap;
             this.positionUpdated = positionUpdated ?? ((_, _, _, _) => { });
+            this.shotFired = shotFired ?? ((_, _, _, _, _, _, _) => { });
             Window = new Window();
             Map = new Map(sharedMiniMap, player, Window);
 
@@ -63,6 +76,15 @@ namespace Shooter.Server
                         case "KeyA": Player.MoveLeft(dt); Notify(); break;
                         case "KeyD": Player.MoveRight(dt); Notify(); break;
                         case "KeyM": MiniMapVisible = !MiniMapVisible; break;
+                        case "Digit1": EquippedWeapon = WeaponType.Pistol; break;
+                        case "Digit2": EquippedWeapon = WeaponType.Shotgun; break;
+                        case "Space":
+                            if (!IsShooting)
+                            {
+                                MarkShot();
+                                FireShot();
+                            }
+                            break;
                         default: break;
                     }
                 }
@@ -82,6 +104,25 @@ namespace Shooter.Server
         }
 
         private void Notify() => positionUpdated?.Invoke(Nickname, Player.PlayerX, Player.PlayerY, Player.PlayerA);
+
+        private void MarkShot() => lastShotAtUtc = DateTime.UtcNow;
+
+        private void FireShot()
+        {
+            int w;
+            int h;
+            float scale;
+            lock (renderLock)
+            {
+                w = Window.ScreenWidth;
+                h = Window.ScreenHeight;
+                scale = ViewScale;
+            }
+            shotFired?.Invoke(Nickname, Player.PlayerX, Player.PlayerY, Player.PlayerA, w, h, scale);
+        }
+
+        private static TimeSpan GetShotDuration(WeaponType weapon) =>
+            weapon == WeaponType.Shotgun ? ShotgunShotDuration : PistolShotDuration;
 
         public object RenderLock => renderLock;
 
@@ -125,6 +166,12 @@ namespace Shooter.Server
             }
             return true;
         }
+    }
+
+    internal enum WeaponType
+    {
+        Pistol,
+        Shotgun
     }
 }
 

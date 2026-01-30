@@ -46,98 +46,7 @@ namespace Shooter.Server
 
         private async Task RenderAndSendAsync(GameSession session, CancellationToken ct)
         {
-            if (session.Socket.State != WebSocketState.Open) return;
-
-            string? text = null;
-            lock (session.RenderLock)
-            {
-                if (session.Socket.State != WebSocketState.Open) return;
-
-                // Обновляем рендер для конкретного игрока
-                session.Map.Update(session.Window);
-
-                // Нарисовать других игроков как спрайты с простым Z‑тестом
-                var others = host.GetPlayerSnapshots();
-                float spriteScale = GetSpriteDistanceScale(session.Window.ScreenWidth, session.Window.ScreenHeight, session.ViewScale);
-                List<(float X, float Y, float A)>? miniMapOthers = null;
-                if (others.Count > 0)
-                {
-                    miniMapOthers = new List<(float X, float Y, float A)>(others.Count);
-                    foreach (var snap in others)
-                    {
-                        if (string.Equals(snap.Nickname, session.Nickname, StringComparison.OrdinalIgnoreCase)) continue;
-
-                        miniMapOthers.Add((snap.X, snap.Y, snap.A));
-
-                        float dx = snap.X - session.Player.PlayerX;
-                        float dy = snap.Y - session.Player.PlayerY;
-                        float angle = MathF.Atan2(dy, dx);
-                        if (angle < 0) angle += 2f * MathF.PI;
-                        float distance = MathF.Sqrt(dx * dx + dy * dy);
-
-                        // Отбрасываем сильно дальних
-                        if (distance <= 0.05f || distance > GameConstants.MaxDepth) continue;
-
-                        float fovA = session.Player.PlayerA - GameConstants.FieldOfView / 2f;
-                        if (fovA < 0) fovA += 2f * MathF.PI;
-                        float diff = angle < fovA && fovA - 2f * MathF.PI + GameConstants.FieldOfView > angle
-                            ? angle + 2f * MathF.PI - fovA
-                            : angle - fovA;
-                        if (diff < 0 || diff > GameConstants.FieldOfView) continue; // вне экрана
-
-                        float ratio = diff / GameConstants.FieldOfView;
-                        int enemyScreenX = (int)(session.Window.ScreenWidth * ratio);
-
-                        float scaledDistance = distance * spriteScale;
-                        string[] enemySprite = SelectEnemySprite(scaledDistance);
-
-                        int ceiling = (int)(session.Window.ScreenHeight / 2.0f - session.Window.ScreenHeight / distance);
-                        int floor = session.Window.ScreenHeight - ceiling;
-                        int enemyScreenY = Math.Min(floor, session.Window.ScreenHeight);
-
-                        for (int y = 0; y < enemySprite.Length; y++)
-                        {
-                            var row = enemySprite[y];
-                            for (int x = 0; x < row.Length; x++)
-                            {
-                                char ch = row[x];
-                                if (ch == '!') continue; // прозрачность
-                                int screenX = x - row.Length / 2 + enemyScreenX;
-                                int screenY = y - enemySprite.Length + enemyScreenY;
-                                if (screenX < 0 || screenX >= session.Window.ScreenWidth ||
-                                    screenY < 0 || screenY >= session.Window.ScreenHeight)
-                                    continue;
-                                // Z‑test: если игрок ближе стены на этом столбце
-                                if (screenX < session.Map.ColumnDepths.Length &&
-                                    distance < session.Map.ColumnDepths[screenX])
-                                {
-                                    session.Window.Screen[screenX, screenY] = ch;
-                                }
-                            }
-                        }
-
-                        int nameY = enemyScreenY - enemySprite.Length - 1;
-                        session.Window.DrawName(
-                            snap.Nickname,
-                            enemyScreenX,
-                            nameY,
-                            distance,
-                            session.Map.ColumnDepths);
-                    }
-                    if (miniMapOthers.Count == 0) miniMapOthers = null;
-                }
-                // Наложение миникарты по флагу
-                if (session.MiniMapVisible)
-                {
-                    session.Window.Render(session.SharedMiniMap, session.Player, miniMapOthers);
-                }
-                else
-                {
-                    session.Window.Render();
-                }
-                text = Window.ToText(session.Window.Screen);
-            }
-            if (text is null) return;
+            if (!TryBuildFrame(session, out string text)) return;
             var bytes = Encoding.UTF8.GetBytes(text);
             try
             {
@@ -145,6 +54,151 @@ namespace Shooter.Server
             }
             catch (WebSocketException) { }
             catch (ObjectDisposedException) { }
+        }
+
+        private bool TryBuildFrame(GameSession session, out string text)
+        {
+            text = string.Empty;
+            if (session.Socket.State != WebSocketState.Open) return false;
+
+            lock (session.RenderLock)
+            {
+                if (session.Socket.State != WebSocketState.Open) return false;
+
+                session.Map.Update(session.Window);
+
+                bool selfAlive = IsSelfAlive(session);
+                float spriteScale = GetSpriteDistanceScale(session.Window.ScreenWidth, session.Window.ScreenHeight, session.ViewScale);
+
+                var miniMapOthers = DrawOtherPlayers(session, spriteScale);
+                RenderMiniMap(session, selfAlive, miniMapOthers);
+                DrawWeapon(session, selfAlive);
+
+                text = Window.ToText(session.Window.Screen);
+                return true;
+            }
+        }
+
+        private bool IsSelfAlive(GameSession session)
+        {
+            return !host.TryGetSnapshot(session.Nickname, out var selfSnap) || selfSnap.IsAlive;
+        }
+
+        private IReadOnlyCollection<(float X, float Y, float A)>? DrawOtherPlayers(GameSession session, float spriteScale)
+        {
+            var others = host.GetAliveSnapshots();
+            if (others.Count == 0) return null;
+
+            var miniMapOthers = new List<(float X, float Y, float A)>(others.Count);
+            foreach (var snap in others)
+            {
+                if (string.Equals(snap.Nickname, session.Nickname, StringComparison.OrdinalIgnoreCase)) continue;
+
+                miniMapOthers.Add((snap.X, snap.Y, snap.A));
+                DrawEnemyIfVisible(session, snap, spriteScale);
+            }
+
+            return miniMapOthers.Count == 0 ? null : miniMapOthers;
+        }
+
+        private void DrawEnemyIfVisible(GameSession session, GameHost.PlayerSnapshot snap, float spriteScale)
+        {
+            if (!TryProjectEnemy(session, snap, out int enemyScreenX, out int enemyScreenY, out float distance))
+            {
+                return;
+            }
+
+            string[] enemySprite = SelectEnemySprite(distance * spriteScale);
+            DrawEnemySprite(session, enemySprite, enemyScreenX, enemyScreenY, distance);
+            DrawEnemyName(session, snap.Nickname, enemyScreenX, enemyScreenY, enemySprite.Length, distance);
+        }
+
+        private bool TryProjectEnemy(GameSession session, GameHost.PlayerSnapshot snap, out int enemyScreenX, out int enemyScreenY, out float distance)
+        {
+            enemyScreenX = 0;
+            enemyScreenY = 0;
+
+            float dx = snap.X - session.Player.PlayerX;
+            float dy = snap.Y - session.Player.PlayerY;
+            float angle = MathF.Atan2(dy, dx);
+            if (angle < 0) angle += 2f * MathF.PI;
+            distance = MathF.Sqrt(dx * dx + dy * dy);
+
+            if (distance <= 0.05f || distance > GameConstants.MaxDepth) return false;
+
+            float fovA = session.Player.PlayerA - GameConstants.FieldOfView / 2f;
+            if (fovA < 0) fovA += 2f * MathF.PI;
+            float diff = angle < fovA && fovA - 2f * MathF.PI + GameConstants.FieldOfView > angle
+                ? angle + 2f * MathF.PI - fovA
+                : angle - fovA;
+            if (diff < 0 || diff > GameConstants.FieldOfView) return false;
+
+            float ratio = diff / GameConstants.FieldOfView;
+            enemyScreenX = (int)(session.Window.ScreenWidth * ratio);
+
+            int ceiling = (int)(session.Window.ScreenHeight / 2.0f - session.Window.ScreenHeight / distance);
+            int floor = session.Window.ScreenHeight - ceiling;
+            enemyScreenY = Math.Min(floor, session.Window.ScreenHeight);
+            return true;
+        }
+
+        private void DrawEnemySprite(GameSession session, string[] enemySprite, int enemyScreenX, int enemyScreenY, float distance)
+        {
+            for (int y = 0; y < enemySprite.Length; y++)
+            {
+                var row = enemySprite[y];
+                for (int x = 0; x < row.Length; x++)
+                {
+                    char ch = row[x];
+                    if (ch == '!') continue; // прозрачность
+                    int screenX = x - row.Length / 2 + enemyScreenX;
+                    int screenY = y - enemySprite.Length + enemyScreenY;
+                    if (screenX < 0 || screenX >= session.Window.ScreenWidth ||
+                        screenY < 0 || screenY >= session.Window.ScreenHeight)
+                        continue;
+                    // Z‑test: если игрок ближе стены на этом столбце
+                    if (screenX < session.Map.ColumnDepths.Length &&
+                        distance < session.Map.ColumnDepths[screenX])
+                    {
+                        session.Window.Screen[screenX, screenY] = ch;
+                    }
+                }
+            }
+        }
+
+        private void DrawEnemyName(GameSession session, string nickname, int enemyScreenX, int enemyScreenY, int spriteHeight, float distance)
+        {
+            int nameY = enemyScreenY - spriteHeight - 1;
+            session.Window.DrawName(
+                nickname,
+                enemyScreenX,
+                nameY,
+                distance,
+                session.Map.ColumnDepths);
+        }
+
+        private void RenderMiniMap(GameSession session, bool selfAlive, IReadOnlyCollection<(float X, float Y, float A)>? miniMapOthers)
+        {
+            if (session.MiniMapVisible)
+            {
+                session.Window.Render(session.SharedMiniMap, selfAlive ? session.Player : null, miniMapOthers);
+            }
+            else
+            {
+                session.Window.Render();
+            }
+        }
+
+        private void DrawWeapon(GameSession session, bool selfAlive)
+        {
+            if (!selfAlive) return;
+
+            var weaponSprite = GetWeaponSprite(session);
+            session.Window.DrawSprite(
+                weaponSprite,
+                session.Window.ScreenWidth / 2,
+                session.Window.ScreenHeight - 1,
+                session.ViewScale);
         }
 
         private static float GetSpriteDistanceScale(int screenWidth, int screenHeight, float viewScale)
@@ -166,6 +220,15 @@ namespace Shooter.Server
                 distance <= 6f ? EnemySprites.EnemySprite3 :
                 distance <= 7f ? EnemySprites.EnemySprite2 :
                 EnemySprites.EnemySprite1;
+        }
+
+        private static string[] GetWeaponSprite(GameSession session)
+        {
+            if (session.EquippedWeapon == WeaponType.Shotgun)
+            {
+                return session.IsShooting ? WeaponSprites.PlayerShotgunShoot : WeaponSprites.PlayerShotgun;
+            }
+            return session.IsShooting ? WeaponSprites.PlayerPistolShoot : WeaponSprites.PlayerPistol;
         }
 
     }

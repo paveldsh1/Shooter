@@ -167,6 +167,14 @@
                 output.value = "WebSocket error";
             };
 
+            ws.onclose = e => {
+                output.value = "";
+                overlay.style.display = "flex";
+                errorBox.textContent = e.reason === "Killed"
+                    ? "Вас убили. Введите ник и зайдите снова."
+                    : "Соединение закрыто. Введите ник и зайдите снова.";
+            };
+
             document.addEventListener("keydown", e => {
                 if (overlay.style.display !== "none") return;
                 if (e.code === "BracketLeft") {

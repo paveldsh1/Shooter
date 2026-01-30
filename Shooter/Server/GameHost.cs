@@ -1,8 +1,10 @@
 using Shooter.Game;
+using Shooter.Game.Assets;
 using Shooter.Models;
 using Shooter.Repositories;
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net.WebSockets;
 
 namespace Shooter.Server
@@ -30,23 +32,211 @@ namespace Shooter.Server
         public IReadOnlyCollection<PlayerSnapshot> GetPlayerSnapshots()
             => snapshots.Values.ToList();
 
+        public IReadOnlyCollection<PlayerSnapshot> GetAliveSnapshots()
+            => snapshots.Values.Where(x => x.IsAlive).ToList();
+
+        public bool TryGetSnapshot(string nickname, out PlayerSnapshot snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(nickname))
+            {
+                snapshot = default;
+                return false;
+            }
+            return snapshots.TryGetValue(nickname.Trim(), out snapshot);
+        }
+
         public bool TryGetRandomSpawn(out float x, out float y)
         {
             var occupied = new List<(float X, float Y)>(snapshots.Count);
             foreach (var snap in snapshots.Values)
             {
-                occupied.Add((snap.X, snap.Y));
+                if (snap.IsAlive)
+                {
+                    occupied.Add((snap.X, snap.Y));
+                }
             }
             return sharedMiniMap.TryGetRandomSpawn(out x, out y, occupied);
         }
 
         public bool IsWalkable(float x, float y) => sharedMiniMap.IsWalkable(x, y);
 
-        public void UpsertSnapshot(string nickname, float x, float y, float a)
+        public void UpsertSnapshot(string nickname, float x, float y, float a, bool? isAlive = null)
         {
             var key = nickname.Trim();
-            snapshots.AddOrUpdate(key, new PlayerSnapshot(key, x, y, a, DateTime.UtcNow),
-                (_, __) => new PlayerSnapshot(key, x, y, a, DateTime.UtcNow));
+            snapshots.AddOrUpdate(
+                key,
+                _ => new PlayerSnapshot(key, x, y, a, DateTime.UtcNow, isAlive ?? true),
+                (_, existing) => new PlayerSnapshot(key, x, y, a, DateTime.UtcNow, isAlive ?? existing.IsAlive));
+        }
+
+        public void HandleShoot(string shooterNickname, float sx, float sy, float sa, int screenWidth, int screenHeight, float viewScale)
+        {
+            if (!CanShoot(shooterNickname)) return;
+
+            if (TryFindHitTarget(shooterNickname, sx, sy, sa, screenWidth, screenHeight, viewScale, out var hitNickname))
+            {
+                KillPlayer(hitNickname);
+            }
+        }
+
+        private bool CanShoot(string shooterNickname)
+        {
+            if (string.IsNullOrWhiteSpace(shooterNickname)) return false;
+            return !TryGetSnapshot(shooterNickname, out var selfSnap) || selfSnap.IsAlive;
+        }
+
+        private bool TryFindHitTarget(
+            string shooterNickname,
+            float sx,
+            float sy,
+            float sa,
+            int screenWidth,
+            int screenHeight,
+            float viewScale,
+            out string hitNickname)
+        {
+            hitNickname = string.Empty;
+            float bestDistance = float.MaxValue;
+            float spriteScale = GetSpriteDistanceScale(screenWidth, screenHeight, viewScale);
+
+            foreach (var snap in snapshots.Values)
+            {
+                if (!IsEnemyTarget(shooterNickname, snap)) continue;
+                if (!TryProjectTarget(sx, sy, sa, screenWidth, snap, out int enemyScreenX, out float distance)) continue;
+                if (!HasLineOfSight(sx, sy, snap.X, snap.Y)) continue;
+
+                string[] enemySprite = SelectEnemySprite(distance * spriteScale);
+                if (!IsCrosshairHit(enemyScreenX, screenWidth, enemySprite)) continue;
+
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    hitNickname = snap.Nickname;
+                }
+            }
+
+            return hitNickname.Length > 0;
+        }
+
+        private static bool IsEnemyTarget(string shooterNickname, PlayerSnapshot snap)
+        {
+            return snap.IsAlive && !string.Equals(snap.Nickname, shooterNickname, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool TryProjectTarget(
+            float sx,
+            float sy,
+            float sa,
+            int screenWidth,
+            PlayerSnapshot snap,
+            out int enemyScreenX,
+            out float distance)
+        {
+            enemyScreenX = 0;
+
+            float dx = snap.X - sx;
+            float dy = snap.Y - sy;
+            distance = MathF.Sqrt(dx * dx + dy * dy);
+            if (distance <= 0.05f || distance > GameConstants.MaxDepth) return false;
+
+            float angle = MathF.Atan2(dy, dx);
+            if (angle < 0) angle += 2f * MathF.PI;
+
+            float fovA = sa - GameConstants.FieldOfView / 2f;
+            if (fovA < 0) fovA += 2f * MathF.PI;
+
+            float diff = angle < fovA && fovA - 2f * MathF.PI + GameConstants.FieldOfView > angle
+                ? angle + 2f * MathF.PI - fovA
+                : angle - fovA;
+            if (diff < 0 || diff > GameConstants.FieldOfView) return false;
+
+            float ratio = diff / GameConstants.FieldOfView;
+            enemyScreenX = (int)(screenWidth * ratio);
+            return true;
+        }
+
+        private static bool IsCrosshairHit(int enemyScreenX, int screenWidth, string[] enemySprite)
+        {
+            int halfWidth = enemySprite[0].Length / 2;
+            int minX = enemyScreenX - halfWidth;
+            int maxX = enemyScreenX + halfWidth;
+            int centerX = screenWidth / 2;
+            return centerX >= minX && centerX <= maxX;
+        }
+
+        private void KillPlayer(string nickname)
+        {
+            SetAlive(nickname, false);
+            if (sessions.TryGetValue(nickname.Trim(), out var session))
+            {
+                _ = CloseSessionAsync(session, "Killed");
+            }
+        }
+
+        private void SetAlive(string nickname, bool alive)
+        {
+            var key = nickname.Trim();
+            snapshots.AddOrUpdate(
+                key,
+                _ => new PlayerSnapshot(key, 0f, 0f, 0f, DateTime.UtcNow, alive),
+                (_, existing) => new PlayerSnapshot(key, existing.X, existing.Y, existing.A, DateTime.UtcNow, alive));
+        }
+
+        private static async Task CloseSessionAsync(GameSession session, string reason)
+        {
+            try
+            {
+                await session.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, reason, CancellationToken.None);
+            }
+            catch
+            {
+                try { session.Socket.Abort(); } catch { }
+            }
+        }
+
+        private bool HasLineOfSight(float x0, float y0, float x1, float y1)
+        {
+            float dx = x1 - x0;
+            float dy = y1 - y0;
+            float distance = MathF.Sqrt(dx * dx + dy * dy);
+            if (distance <= 0.05f) return true;
+
+            float step = 0.05f;
+            float stepX = dx / distance * step;
+            float stepY = dy / distance * step;
+            float x = x0;
+            float y = y0;
+            float traveled = 0f;
+
+            while (traveled < distance)
+            {
+                x += stepX;
+                y += stepY;
+                traveled += step;
+                if (!sharedMiniMap.IsWalkable(x, y)) return false;
+            }
+            return true;
+        }
+
+        private static float GetSpriteDistanceScale(int screenWidth, int screenHeight, float viewScale)
+        {
+            float baseArea = GameConstants.ScreenWidth * GameConstants.ScreenHeight;
+            float currentArea = Math.Max(1, screenWidth) * Math.Max(1, screenHeight);
+            float effectiveArea = currentArea * MathF.Max(0.1f, viewScale * viewScale);
+            return MathF.Sqrt(baseArea / effectiveArea);
+        }
+
+        private static string[] SelectEnemySprite(float distance)
+        {
+            return
+                distance <= 1f ? EnemySprites.EnemySprite8 :
+                distance <= 2f ? EnemySprites.EnemySprite7 :
+                distance <= 3f ? EnemySprites.EnemySprite6 :
+                distance <= 4f ? EnemySprites.EnemySprite5 :
+                distance <= 5f ? EnemySprites.EnemySprite4 :
+                distance <= 6f ? EnemySprites.EnemySprite3 :
+                distance <= 7f ? EnemySprites.EnemySprite2 :
+                EnemySprites.EnemySprite1;
         }
 
         public async Task RunSessionAsync(WebSocket socket, Player player)
@@ -60,9 +250,15 @@ namespace Shooter.Server
             }
 
             // первичная фиксация позиции подключившегося игрока
-            UpsertSnapshot(player.Nickname, player.PlayerX, player.PlayerY, player.PlayerA);
+            UpsertSnapshot(player.Nickname, player.PlayerX, player.PlayerY, player.PlayerA, isAlive: true);
 
-            var session = new GameSession(player.Nickname, socket, player, sharedMiniMap, (n, x, y, a) => UpsertSnapshot(n, x, y, a));
+            var session = new GameSession(
+                player.Nickname,
+                socket,
+                player,
+                sharedMiniMap,
+                (n, x, y, a) => UpsertSnapshot(n, x, y, a),
+                (n, x, y, a, w, h, s) => HandleShoot(n, x, y, a, w, h, s));
             sessions[key] = session;
 
             try
@@ -85,7 +281,7 @@ namespace Shooter.Server
             }
         }
 
-        internal readonly record struct PlayerSnapshot(string Nickname, float X, float Y, float A, DateTime UpdatedAt);
+        internal readonly record struct PlayerSnapshot(string Nickname, float X, float Y, float A, DateTime UpdatedAt, bool IsAlive);
     }
 }
 

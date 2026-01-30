@@ -42,83 +42,102 @@ namespace Shooter.Game
                 float rayAngle = player.PlayerA - GameConstants.FieldOfView / 2.0f
                                  + x / (float)window.ScreenWidth * GameConstants.FieldOfView;
 
-                float stepSize = 0.1f;
-                float distanceToWall = 0.0f;
+                var hit = CastRay(rayAngle);
+                RenderColumn(window, x, hit.Distance, hit.IsBoundary);
+            }
+        }
 
-                bool hitWall = false;
-                bool boundary = false;
+        private (float Distance, bool IsBoundary) CastRay(float rayAngle)
+        {
+            const float stepSize = 0.1f;
+            float distanceToWall = 0.0f;
 
-                float eyeX = (float)Math.Cos(rayAngle);
-                float eyeY = (float)Math.Sin(rayAngle);
+            float eyeX = (float)Math.Cos(rayAngle);
+            float eyeY = (float)Math.Sin(rayAngle);
 
-                while (!hitWall && distanceToWall < GameConstants.MaxDepth)
+            while (distanceToWall < GameConstants.MaxDepth)
+            {
+                distanceToWall += stepSize;
+                int testX = (int)(player.PlayerX + eyeX * distanceToWall);
+                int testY = (int)(player.PlayerY + eyeY * distanceToWall);
+
+                if (IsOutOfBounds(testX, testY))
                 {
-                    distanceToWall += stepSize;
-                    int testX = (int)(player.PlayerX + eyeX * distanceToWall);
-                    int testY = (int)(player.PlayerY + eyeY * distanceToWall);
-                    if (testY < 0 || testY >= miniMap.Map.Length || testX < 0 || testX >= miniMap.Map[testY].Length)
-                    {
-                        hitWall = true;
-                        distanceToWall = GameConstants.MaxDepth;
-                    }
-                    else
-                    {
-                        if (miniMap.Map[testY][testX] == '#')
-                        {
-                            hitWall = true;
-                            List<(float, float)> p = new();
-                            for (int tx = 0; tx < 2; tx++)
-                            {
-                                for (int ty = 0; ty < 2; ty++)
-                                {
-                                    float vy = (float)testY + ty - player.PlayerY;
-                                    float vx = (float)testX + tx - player.PlayerX;
-                                    float d = (float)Math.Sqrt(vx * vx + vy * vy);
-                                    float dot = eyeX * vx / d + eyeY * vy / d;
-                                    p.Add((d, dot));
-                                }
-                            }
-                            p.Sort((a, b) => a.Item1.CompareTo(b.Item1));
-                            float fBound = 0.005f;
-                            if (Math.Acos(p[0].Item2) < fBound) boundary = true;
-                            if (Math.Acos(p[1].Item2) < fBound) boundary = true;
-                            if (Math.Acos(p[2].Item2) < fBound) boundary = true;
-                        }
-                    }
+                    return (GameConstants.MaxDepth, false);
                 }
-                int ceiling = (int)((window.ScreenHeight / 2.0f) - window.ScreenHeight / distanceToWall);
-                int floor = window.ScreenHeight - ceiling;
 
-                ColumnDepths[x] = distanceToWall;
-
-                for (int y = 0; y < window.ScreenHeight; y++)
+                if (IsWallCell(testX, testY))
                 {
-                    depthBuffer[x, y] = distanceToWall;
+                    bool boundary = IsBoundaryEdge(eyeX, eyeY, testX, testY);
+                    return (distanceToWall, boundary);
+                }
+            }
 
-                    if (y <= ceiling)
+            return (GameConstants.MaxDepth, false);
+        }
+
+        private bool IsOutOfBounds(int x, int y)
+        {
+            return y < 0 || y >= miniMap.Map.Length || x < 0 || x >= miniMap.Map[y].Length;
+        }
+
+        private bool IsWallCell(int x, int y) => miniMap.Map[y][x] == '#';
+
+        private bool IsBoundaryEdge(float eyeX, float eyeY, int testX, int testY)
+        {
+            List<(float Dist, float Dot)> p = new();
+            for (int tx = 0; tx < 2; tx++)
+            {
+                for (int ty = 0; ty < 2; ty++)
+                {
+                    float vy = (float)testY + ty - player.PlayerY;
+                    float vx = (float)testX + tx - player.PlayerX;
+                    float d = (float)Math.Sqrt(vx * vx + vy * vy);
+                    float dot = eyeX * vx / d + eyeY * vy / d;
+                    p.Add((d, dot));
+                }
+            }
+            p.Sort((a, b) => a.Dist.CompareTo(b.Dist));
+            float fBound = 0.005f;
+            return Math.Acos(p[0].Dot) < fBound ||
+                   Math.Acos(p[1].Dot) < fBound ||
+                   Math.Acos(p[2].Dot) < fBound;
+        }
+
+        private void RenderColumn(Window window, int x, float distanceToWall, bool boundary)
+        {
+            int ceiling = (int)((window.ScreenHeight / 2.0f) - window.ScreenHeight / distanceToWall);
+            int floor = window.ScreenHeight - ceiling;
+
+            ColumnDepths[x] = distanceToWall;
+
+            for (int y = 0; y < window.ScreenHeight; y++)
+            {
+                depthBuffer[x, y] = distanceToWall;
+
+                if (y <= ceiling)
+                {
+                    window.Screen[x, y] = ' ';
+                }
+                else if (y > ceiling && y <= floor)
+                {
+                    window.Screen[x, y] =
+                        boundary ? ' ' :
+                        distanceToWall < GameConstants.MaxDepth / 3.00f ? '█' :
+                        distanceToWall < GameConstants.MaxDepth / 1.75f ? '■' :
+                        distanceToWall < GameConstants.MaxDepth / 1.00f ? '▪' :
+                        ' ';
+                }
+                else
+                {
+                    float b = 1.0f - (y - window.ScreenHeight / 2.0f) / (window.ScreenHeight / 2.0f);
+                    window.Screen[x, y] = b switch
                     {
-                        window.Screen[x, y] = ' ';
-                    }
-                    else if (y > ceiling && y <= floor)
-                    {
-                        window.Screen[x, y] =
-                            boundary ? ' ' :
-                            distanceToWall < GameConstants.MaxDepth / 3.00f ? '█' :
-                            distanceToWall < GameConstants.MaxDepth / 1.75f ? '■' :
-                            distanceToWall < GameConstants.MaxDepth / 1.00f ? '▪' :
-                            ' ';
-                    }
-                    else
-                    {
-                        float b = 1.0f - (y - window.ScreenHeight / 2.0f) / (window.ScreenHeight / 2.0f);
-                        window.Screen[x, y] = b switch
-                        {
-                            < 0.20f => '●',
-                            < 0.40f => '•',
-                            < 0.60f => '·',
-                            _ => ' ',
-                        };
-                    }
+                        < 0.20f => '●',
+                        < 0.40f => '•',
+                        < 0.60f => '·',
+                        _ => ' ',
+                    };
                 }
             }
         }

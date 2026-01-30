@@ -85,6 +85,38 @@ namespace Shooter.Game
                 }
             }
         }
+
+        public void DrawSprite(string[] sprite, int centerX, int bottomY, float scale, char transparent = '!')
+        {
+            if (sprite == null || sprite.Length == 0) return;
+            if (scale <= 0f) return;
+
+            int srcH = sprite.Length;
+            int srcW = sprite[0].Length;
+            int dstW = Math.Max(1, (int)MathF.Round(srcW * scale));
+            int dstH = Math.Max(1, (int)MathF.Round(srcH * scale));
+
+            for (int y = 0; y < dstH; y++)
+            {
+                int srcY = Math.Min(srcH - 1, (int)(y / scale));
+                var row = sprite[srcY];
+                for (int x = 0; x < dstW; x++)
+                {
+                    int srcX = Math.Min(srcW - 1, (int)(x / scale));
+                    char ch = row[srcX];
+                    if (ch == transparent) continue;
+
+                    int screenX = centerX - dstW / 2 + x;
+                    int screenY = bottomY - dstH + 1 + y;
+                    if (screenX < 0 || screenX >= ScreenWidth ||
+                        screenY < 0 || screenY >= ScreenHeight)
+                    {
+                        continue;
+                    }
+                    Screen[screenX, screenY] = ch;
+                }
+            }
+        }
         
         private void AddMiniMapToScreen(MiniMap miniMap)
         {
@@ -104,12 +136,10 @@ namespace Shooter.Game
 
             if (testY < 0 || testY >= miniMap.Map.Length) return;
             if (testX < 0 || testX >= miniMap.Map[testY].Length) return;
-            if (IsWallCell(miniMap.Map[testY][testX])) return;
+            if (MapUtils.IsWallCell(miniMap.Map[testY][testX])) return;
 
             Screen[testX, testY] = marker;
         }
-
-        private static bool IsWallCell(char cell) => cell is '#' or '█';
 
         public static string ToText(char[,] grid)
         {

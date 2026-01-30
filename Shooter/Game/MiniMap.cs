@@ -100,7 +100,7 @@ namespace Shooter.Game
             {
                 for (int col = 1; col < Map[row].Length - 1; col++)
                 {
-                    if (!IsWallCell(Map[row][col]))
+                    if (!MapUtils.IsWallCell(Map[row][col]))
                     {
                         x = col;
                         y = row;
@@ -116,7 +116,7 @@ namespace Shooter.Game
         private bool IsFullyConnected(int startX, int startY, int openCells)
         {
             if (openCells <= 1) return true;
-            if (IsWallCell(Map[startY][startX])) return false;
+            if (MapUtils.IsWallCell(Map[startY][startX])) return false;
 
             var visited = new bool[Map.Length, Map[0].Length];
             var queue = new Queue<(int X, int Y)>();
@@ -140,7 +140,7 @@ namespace Shooter.Game
                 if (y < 0 || y >= Map.Length) return;
                 if (x < 0 || x >= Map[y].Length) return;
                 if (visited[y, x]) return;
-                if (IsWallCell(Map[y][x])) return;
+                if (MapUtils.IsWallCell(Map[y][x])) return;
                 visited[y, x] = true;
                 visitedCount++;
                 queue.Enqueue((x, y));
@@ -213,7 +213,7 @@ namespace Shooter.Game
             {
                 for (int col = 0; col < Map[row].Length; col++)
                 {
-                    if (IsWallCell(Map[row][col])) continue;
+                    if (MapUtils.IsWallCell(Map[row][col])) continue;
                     if (IsOccupiedCell(col, row, occupied)) continue;
                     candidates.Add((col, row));
                 }
@@ -234,10 +234,8 @@ namespace Shooter.Game
 
             if (testY < 0 || testY >= Map.Length) return false;
             if (testX < 0 || testX >= Map[testY].Length) return false;
-            return !IsWallCell(Map[testY][testX]);
+            return !MapUtils.IsWallCell(Map[testY][testX]);
         }
-
-        private static bool IsWallCell(char cell) => cell is '#' or '█';
 
         private static bool IsOccupiedCell(int x, int y, IReadOnlyCollection<(float X, float Y)>? occupied)
         {
