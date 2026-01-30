@@ -1,5 +1,4 @@
 using Shooter.Models;
-using System;
 using System.Text;
 
 namespace Shooter.Game

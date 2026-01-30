@@ -1,7 +1,5 @@
-﻿using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Shooter.Models;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 
 namespace Shooter.Repositories
 {

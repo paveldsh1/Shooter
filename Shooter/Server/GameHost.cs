@@ -1,10 +1,7 @@
 using Shooter.Game;
-using Shooter.Game.Assets;
 using Shooter.Models;
 using Shooter.Repositories;
-using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Net.WebSockets;
 
 namespace Shooter.Server
@@ -97,7 +94,7 @@ namespace Shooter.Server
         {
             hitNickname = string.Empty;
             float bestDistance = float.MaxValue;
-            float spriteScale = GetSpriteDistanceScale(screenWidth, screenHeight, viewScale);
+            float spriteScale = SpriteMetrics.GetDistanceScale(screenWidth, screenHeight, viewScale);
 
             foreach (var snap in snapshots.Values)
             {
@@ -105,7 +102,7 @@ namespace Shooter.Server
                 if (!TryProjectTarget(sx, sy, sa, screenWidth, snap, out int enemyScreenX, out float distance)) continue;
                 if (!HasLineOfSight(sx, sy, snap.X, snap.Y)) continue;
 
-                string[] enemySprite = SelectEnemySprite(distance * spriteScale);
+                string[] enemySprite = SpriteMetrics.SelectEnemySprite(distance * spriteScale);
                 if (!IsCrosshairHit(enemyScreenX, screenWidth, enemySprite)) continue;
 
                 if (distance < bestDistance)
@@ -218,27 +215,6 @@ namespace Shooter.Server
             return true;
         }
 
-        private static float GetSpriteDistanceScale(int screenWidth, int screenHeight, float viewScale)
-        {
-            float baseArea = GameConstants.ScreenWidth * GameConstants.ScreenHeight;
-            float currentArea = Math.Max(1, screenWidth) * Math.Max(1, screenHeight);
-            float effectiveArea = currentArea * MathF.Max(0.1f, viewScale * viewScale);
-            return MathF.Sqrt(baseArea / effectiveArea);
-        }
-
-        private static string[] SelectEnemySprite(float distance)
-        {
-            return
-                distance <= 1f ? EnemySprites.EnemySprite8 :
-                distance <= 2f ? EnemySprites.EnemySprite7 :
-                distance <= 3f ? EnemySprites.EnemySprite6 :
-                distance <= 4f ? EnemySprites.EnemySprite5 :
-                distance <= 5f ? EnemySprites.EnemySprite4 :
-                distance <= 6f ? EnemySprites.EnemySprite3 :
-                distance <= 7f ? EnemySprites.EnemySprite2 :
-                EnemySprites.EnemySprite1;
-        }
-
         public async Task RunSessionAsync(WebSocket socket, Player player)
         {
             var key = player.Nickname.Trim();
@@ -281,7 +257,6 @@ namespace Shooter.Server
             }
         }
 
-        internal readonly record struct PlayerSnapshot(string Nickname, float X, float Y, float A, DateTime UpdatedAt, bool IsAlive);
     }
 }
 

@@ -1,5 +1,6 @@
 using Shooter.Game;
 using Shooter.Game.Assets;
+using Shooter.Models;
 using System.Net.WebSockets;
 using System.Text;
 
@@ -68,7 +69,10 @@ namespace Shooter.Server
                 session.Map.Update(session.Window);
 
                 bool selfAlive = IsSelfAlive(session);
-                float spriteScale = GetSpriteDistanceScale(session.Window.ScreenWidth, session.Window.ScreenHeight, session.ViewScale);
+                float spriteScale = SpriteMetrics.GetDistanceScale(
+                    session.Window.ScreenWidth,
+                    session.Window.ScreenHeight,
+                    session.ViewScale);
 
                 var miniMapOthers = DrawOtherPlayers(session, spriteScale);
                 RenderMiniMap(session, selfAlive, miniMapOthers);
@@ -102,19 +106,19 @@ namespace Shooter.Server
             return miniMapOthers.Count == 0 ? null : miniMapOthers;
         }
 
-        private void DrawEnemyIfVisible(GameSession session, GameHost.PlayerSnapshot snap, float spriteScale)
+        private void DrawEnemyIfVisible(GameSession session, PlayerSnapshot snap, float spriteScale)
         {
             if (!TryProjectEnemy(session, snap, out int enemyScreenX, out int enemyScreenY, out float distance))
             {
                 return;
             }
 
-            string[] enemySprite = SelectEnemySprite(distance * spriteScale);
+            string[] enemySprite = SpriteMetrics.SelectEnemySprite(distance * spriteScale);
             DrawEnemySprite(session, enemySprite, enemyScreenX, enemyScreenY, distance);
             DrawEnemyName(session, snap.Nickname, enemyScreenX, enemyScreenY, enemySprite.Length, distance);
         }
 
-        private bool TryProjectEnemy(GameSession session, GameHost.PlayerSnapshot snap, out int enemyScreenX, out int enemyScreenY, out float distance)
+        private bool TryProjectEnemy(GameSession session, PlayerSnapshot snap, out int enemyScreenX, out int enemyScreenY, out float distance)
         {
             enemyScreenX = 0;
             enemyScreenY = 0;
@@ -202,27 +206,6 @@ namespace Shooter.Server
                 session.ViewScale);
         }
 
-
-        private static float GetSpriteDistanceScale(int screenWidth, int screenHeight, float viewScale)
-        {
-            float baseArea = GameConstants.ScreenWidth * GameConstants.ScreenHeight;
-            float currentArea = Math.Max(1, screenWidth) * Math.Max(1, screenHeight);
-            float effectiveArea = currentArea * MathF.Max(0.1f, viewScale * viewScale);
-            return MathF.Sqrt(baseArea / effectiveArea);
-        }
-
-        private static string[] SelectEnemySprite(float distance)
-        {
-            return
-                distance <= 1f ? EnemySprites.EnemySprite8 :
-                distance <= 2f ? EnemySprites.EnemySprite7 :
-                distance <= 3f ? EnemySprites.EnemySprite6 :
-                distance <= 4f ? EnemySprites.EnemySprite5 :
-                distance <= 5f ? EnemySprites.EnemySprite4 :
-                distance <= 6f ? EnemySprites.EnemySprite3 :
-                distance <= 7f ? EnemySprites.EnemySprite2 :
-                EnemySprites.EnemySprite1;
-        }
 
         private static string[] GetWeaponSprite(GameSession session)
         {

@@ -81,7 +81,7 @@ namespace Shooter.Game
             return y < 0 || y >= miniMap.Map.Length || x < 0 || x >= miniMap.Map[y].Length;
         }
 
-        private bool IsWallCell(int x, int y) => miniMap.Map[y][x] == '#';
+        private bool IsWallCell(int x, int y) => MapUtils.IsWallCell(miniMap.Map[y][x]);
 
         private bool IsBoundaryEdge(float eyeX, float eyeY, int testX, int testY)
         {

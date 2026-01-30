@@ -1,5 +1,3 @@
-using Shooter.Models;
-
 namespace Shooter.Game
 {
     internal class MiniMap
@@ -157,34 +155,6 @@ namespace Shooter.Game
                 }
                 Console.WriteLine();
             }
-        }
-
-        private void DeleteMarker()
-        {
-            for(int i = 0; i < Map.Length; ++i)
-            {
-                for (int j = 0; j < Map[i].Length; ++j)
-                {
-                    if (Map[i][j] is 'v' or '<' or '^' or '>' or '.')
-                    {
-                        Map[i][j] = ' ';
-                        return;
-                    }
-                }
-            }
-        }
-
-        public void Update(Player player)
-        {
-            DeleteMarker();
-            int testX = (int)player.PlayerX;
-            int testY = (int)player.PlayerY;
-
-            // Проверяем границы: сначала по строкам (Y), затем по столбцам (X)
-            if (testY < 0 || testY >= Map.Length) return;
-            if (testX < 0 || testX >= Map[testY].Length) return;
-
-            Map[testY][testX] = '.';
         }
 
         public static char GetDirectionMarker(float angle)

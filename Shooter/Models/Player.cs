@@ -99,10 +99,8 @@ namespace Shooter.Models
                 && testY < miniMap.Map.Length
                 && testX >= 0
                 && testX < miniMap.Map[testY].Length
-                && !IsWall(miniMap.Map[testY][testX]);
+                && !MapUtils.IsWallCell(miniMap.Map[testY][testX]);
         }
-
-        private static bool IsWall(char cell) => cell is '#' or '█';
 
         public void MoveRight(float elapsedSeconds)
         {
