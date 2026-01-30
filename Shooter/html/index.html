@@ -132,7 +132,7 @@
             output.cols = cols;
             output.rows = rows;
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(`RESIZE ${cols} ${rows}`);
+                ws.send(`RESIZE ${cols} ${rows} ${scale.toFixed(2)}`);
             }
         }
 

@@ -1,5 +1,6 @@
 using Shooter.Game;
 using Shooter.Models;
+using System.Globalization;
 using System.Net.WebSockets;
 using System.Text;
 
@@ -7,6 +8,8 @@ namespace Shooter.Server
 {
     internal class GameSession
     {
+        private const float MinScale = 0.5f;
+        private const float MaxScale = 3.0f;
         public string Nickname { get; }
         public WebSocket Socket { get; }
         public Player Player { get; }
@@ -16,6 +19,7 @@ namespace Shooter.Server
         public volatile bool MiniMapVisible = true;
         private readonly Action<string, float, float, float> positionUpdated;
         private readonly object renderLock = new();
+        public float ViewScale { get; private set; } = 1.0f;
 
         private readonly byte[] receiveBuffer = new byte[1024];
 
@@ -94,17 +98,30 @@ namespace Shooter.Server
                 return true;
             }
 
+            float scale = ViewScale;
+            if (parts.Length >= 4 &&
+                float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
+            {
+                scale = Math.Clamp(parsed, MinScale, MaxScale);
+            }
+
             cols = Math.Clamp(cols, Window.MinCols, Window.MaxCols);
             rows = Math.Clamp(rows, Window.MinRows, Window.MaxRows);
 
-            if (cols == Window.ScreenWidth && rows == Window.ScreenHeight) return true;
+            bool sizeChanged = cols != Window.ScreenWidth || rows != Window.ScreenHeight;
+            bool scaleChanged = MathF.Abs(scale - ViewScale) > 0.001f;
+            if (!sizeChanged && !scaleChanged) return true;
 
             lock (renderLock)
             {
-                var newWindow = new Window(cols, rows);
-                var newMap = new Map(SharedMiniMap, Player, newWindow);
-                Window = newWindow;
-                Map = newMap;
+                ViewScale = scale;
+                if (sizeChanged)
+                {
+                    var newWindow = new Window(cols, rows);
+                    var newMap = new Map(SharedMiniMap, Player, newWindow);
+                    Window = newWindow;
+                    Map = newMap;
+                }
             }
             return true;
         }

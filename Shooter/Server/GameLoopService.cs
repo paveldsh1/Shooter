@@ -58,6 +58,7 @@ namespace Shooter.Server
 
                 // Нарисовать других игроков как спрайты с простым Z‑тестом
                 var others = host.GetPlayerSnapshots();
+                float spriteScale = GetSpriteDistanceScale(session.Window.ScreenWidth, session.Window.ScreenHeight, session.ViewScale);
                 List<(float X, float Y, float A)>? miniMapOthers = null;
                 if (others.Count > 0)
                 {
@@ -87,16 +88,8 @@ namespace Shooter.Server
                         float ratio = diff / GameConstants.FieldOfView;
                         int enemyScreenX = (int)(session.Window.ScreenWidth * ratio);
 
-                        // Выбор кадра по расстоянию
-                        string[] enemySprite =
-                            distance <= 1f ? EnemySprites.EnemySprite8 :
-                            distance <= 2f ? EnemySprites.EnemySprite7 :
-                            distance <= 3f ? EnemySprites.EnemySprite6 :
-                            distance <= 4f ? EnemySprites.EnemySprite5 :
-                            distance <= 5f ? EnemySprites.EnemySprite4 :
-                            distance <= 6f ? EnemySprites.EnemySprite3 :
-                            distance <= 7f ? EnemySprites.EnemySprite2 :
-                            EnemySprites.EnemySprite1;
+                        float scaledDistance = distance * spriteScale;
+                        string[] enemySprite = SelectEnemySprite(scaledDistance);
 
                         int ceiling = (int)(session.Window.ScreenHeight / 2.0f - session.Window.ScreenHeight / distance);
                         int floor = session.Window.ScreenHeight - ceiling;
@@ -152,6 +145,27 @@ namespace Shooter.Server
             }
             catch (WebSocketException) { }
             catch (ObjectDisposedException) { }
+        }
+
+        private static float GetSpriteDistanceScale(int screenWidth, int screenHeight, float viewScale)
+        {
+            float baseArea = GameConstants.ScreenWidth * GameConstants.ScreenHeight;
+            float currentArea = Math.Max(1, screenWidth) * Math.Max(1, screenHeight);
+            float effectiveArea = currentArea * MathF.Max(0.1f, viewScale * viewScale);
+            return MathF.Sqrt(baseArea / effectiveArea);
+        }
+
+        private static string[] SelectEnemySprite(float distance)
+        {
+            return
+                distance <= 1f ? EnemySprites.EnemySprite8 :
+                distance <= 2f ? EnemySprites.EnemySprite7 :
+                distance <= 3f ? EnemySprites.EnemySprite6 :
+                distance <= 4f ? EnemySprites.EnemySprite5 :
+                distance <= 5f ? EnemySprites.EnemySprite4 :
+                distance <= 6f ? EnemySprites.EnemySprite3 :
+                distance <= 7f ? EnemySprites.EnemySprite2 :
+                EnemySprites.EnemySprite1;
         }
 
     }
