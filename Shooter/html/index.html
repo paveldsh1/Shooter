@@ -144,6 +144,30 @@
 
         window.addEventListener("resize", scheduleResize);
 
+        function handleKeydown(e) {
+            if (overlay.style.display !== "none") return;
+            if (e.code === "BracketLeft") {
+                scale = Math.max(0.5, scale - 0.1);
+                applyScale();
+                return;
+            }
+            if (e.code === "BracketRight") {
+                scale = Math.min(3, scale + 0.1);
+                applyScale();
+                return;
+            }
+            if (e.code === "Digit0") {
+                scale = 1;
+                applyScale();
+                return;
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(e.code);
+            }
+        }
+
+        document.addEventListener("keydown", handleKeydown);
+
         function connectWebSocket() {
             const protocol = location.protocol === "https:" ? "wss://" : "ws://";
             const nickname = nicknameInput.value.trim();
@@ -169,33 +193,12 @@
 
             ws.onclose = e => {
                 output.value = "";
+                ws = null;
                 overlay.style.display = "flex";
                 errorBox.textContent = e.reason === "Killed"
                     ? "Вас убили. Введите ник и зайдите снова."
                     : "Соединение закрыто. Введите ник и зайдите снова.";
             };
-
-            document.addEventListener("keydown", e => {
-                if (overlay.style.display !== "none") return;
-                if (e.code === "BracketLeft") {
-                    scale = Math.max(0.5, scale - 0.1);
-                    applyScale();
-                    return;
-                }
-                if (e.code === "BracketRight") {
-                    scale = Math.min(3, scale + 0.1);
-                    applyScale();
-                    return;
-                }
-                if (e.code === "Digit0") {
-                    scale = 1;
-                    applyScale();
-                    return;
-                }
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(e.code);
-                }
-            });
         }
 
         async function registerNickname(nickname) {

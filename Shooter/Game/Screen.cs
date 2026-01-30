@@ -11,6 +11,26 @@ namespace Shooter.Game
         public const int MaxCols = 300;
         public const int MaxRows = 120;
 
+        private static readonly string[] HelpLinesShown =
+        [
+            "Controls:",
+            "W/A/S/D - move/turn",
+            "M - toggle minimap",
+            "1 - pistol",
+            "2 - shotgun",
+            "Space - shoot",
+            "Enter - hide help",
+            "Esc - exit",
+            "[ - zoom out",
+            "] - zoom in",
+            "0 - reset zoom"
+        ];
+
+        private static readonly string[] HelpLinesHidden =
+        [
+            "Enter - show help"
+        ];
+
         public int ScreenWidth { get; }
         public int ScreenHeight { get; }
         public char[,] Screen { get; private set; }
@@ -116,6 +136,57 @@ namespace Shooter.Game
                     Screen[screenX, screenY] = ch;
                 }
             }
+        }
+
+        public void DrawTextLines(IReadOnlyList<string> lines, int startX, int startY)
+        {
+            if (lines == null || lines.Count == 0) return;
+
+            int y = startY;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string line = lines[i];
+                if (line.Length == 0)
+                {
+                    y++;
+                    continue;
+                }
+
+                if (y < 0)
+                {
+                    y++;
+                    continue;
+                }
+                if (y >= ScreenHeight) break;
+
+                int x = startX;
+                for (int j = 0; j < line.Length; j++)
+                {
+                    if (x >= 0 && x < ScreenWidth)
+                    {
+                        Screen[x, y] = line[j];
+                    }
+                    x++;
+                    if (x >= ScreenWidth) break;
+                }
+                y++;
+            }
+        }
+
+        public void DrawHelpOverlay(bool visible)
+        {
+            var lines = visible ? HelpLinesShown : HelpLinesHidden;
+            if (lines.Length == 0) return;
+
+            int maxLen = 0;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].Length > maxLen) maxLen = lines[i].Length;
+            }
+
+            int startX = Math.Max(0, ScreenWidth - maxLen - 2);
+            int startY = 1;
+            DrawTextLines(lines, startX, startY);
         }
         
         private void AddMiniMapToScreen(MiniMap miniMap)

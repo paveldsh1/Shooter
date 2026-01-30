@@ -19,6 +19,7 @@ namespace Shooter.Server
         public Map Map { get; private set; }
         public MiniMap SharedMiniMap { get; }
         public volatile bool MiniMapVisible = true;
+        public volatile bool HelpVisible = true;
         private readonly Action<string, float, float, float> positionUpdated;
         private readonly Action<string, float, float, float, int, int, float> shotFired;
         private readonly object renderLock = new();
@@ -76,6 +77,10 @@ namespace Shooter.Server
                         case "KeyA": Player.MoveLeft(dt); Notify(); break;
                         case "KeyD": Player.MoveRight(dt); Notify(); break;
                         case "KeyM": MiniMapVisible = !MiniMapVisible; break;
+                        case "Enter":
+                        case "NumpadEnter":
+                            HelpVisible = !HelpVisible;
+                            break;
                         case "Digit1": EquippedWeapon = WeaponType.Pistol; break;
                         case "Digit2": EquippedWeapon = WeaponType.Shotgun; break;
                         case "Space":

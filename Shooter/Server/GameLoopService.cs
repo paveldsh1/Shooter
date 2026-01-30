@@ -73,6 +73,7 @@ namespace Shooter.Server
                 var miniMapOthers = DrawOtherPlayers(session, spriteScale);
                 RenderMiniMap(session, selfAlive, miniMapOthers);
                 DrawWeapon(session, selfAlive);
+                session.Window.DrawHelpOverlay(session.HelpVisible);
 
                 text = Window.ToText(session.Window.Screen);
                 return true;
@@ -200,6 +201,7 @@ namespace Shooter.Server
                 session.Window.ScreenHeight - 1,
                 session.ViewScale);
         }
+
 
         private static float GetSpriteDistanceScale(int screenWidth, int screenHeight, float viewScale)
         {
