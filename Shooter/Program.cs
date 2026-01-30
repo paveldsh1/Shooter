@@ -105,6 +105,10 @@ namespace Shooter
                 {
                     player.SetState(state.PlayerX, state.PlayerY, state.PlayerA);
                 }
+                else if (host.TryGetRandomSpawn(out var spawnX, out var spawnY))
+                {
+                    player.SetState(spawnX, spawnY, player.PlayerA);
+                }
 
                 var socket = await context.WebSockets.AcceptWebSocketAsync();
                 try

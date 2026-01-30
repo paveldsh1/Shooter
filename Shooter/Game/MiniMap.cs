@@ -24,7 +24,7 @@ namespace Shooter.Game
                     if (i == 0 || i == height - 1 || j == 0 || j == width - 1) Map[i][j] = '#';
                     else
                     {
-                        Map[i][j] = ' '; // TODO RandomService.GetRandomField();
+                        Map[i][j] = ' ';
                     }
                 }
             }
@@ -82,6 +82,44 @@ namespace Shooter.Game
                 >= 5f * MathF.PI / 4f and < 7f * MathF.PI / 4f => '^', // 225°..315°
                 _ => '>',                                             // 315°..45°
             };
+        }
+
+        public bool TryGetRandomSpawn(out float x, out float y, IReadOnlyCollection<(float X, float Y)>? occupied = null)
+        {
+            x = 0f;
+            y = 0f;
+
+            if (Map.Length == 0) return false;
+
+            var candidates = new List<(int X, int Y)>();
+            for (int row = 0; row < Map.Length; row++)
+            {
+                for (int col = 0; col < Map[row].Length; col++)
+                {
+                    if (IsWallCell(Map[row][col])) continue;
+                    if (IsOccupiedCell(col, row, occupied)) continue;
+                    candidates.Add((col, row));
+                }
+            }
+
+            if (candidates.Count == 0) return false;
+
+            var pick = candidates[Random.Shared.Next(candidates.Count)];
+            x = pick.X + 0.5f;
+            y = pick.Y + 0.5f;
+            return true;
+        }
+
+        private static bool IsWallCell(char cell) => cell is '#' or '█';
+
+        private static bool IsOccupiedCell(int x, int y, IReadOnlyCollection<(float X, float Y)>? occupied)
+        {
+            if (occupied == null || occupied.Count == 0) return false;
+            foreach (var pos in occupied)
+            {
+                if ((int)pos.X == x && (int)pos.Y == y) return true;
+            }
+            return false;
         }
     }
 }

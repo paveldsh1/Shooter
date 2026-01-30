@@ -30,6 +30,16 @@ namespace Shooter.Server
         public IReadOnlyCollection<PlayerSnapshot> GetPlayerSnapshots()
             => snapshots.Values.ToList();
 
+        public bool TryGetRandomSpawn(out float x, out float y)
+        {
+            var occupied = new List<(float X, float Y)>(snapshots.Count);
+            foreach (var snap in snapshots.Values)
+            {
+                occupied.Add((snap.X, snap.Y));
+            }
+            return sharedMiniMap.TryGetRandomSpawn(out x, out y, occupied);
+        }
+
         public void UpsertSnapshot(string nickname, float x, float y, float a)
         {
             var key = nickname.Trim();
