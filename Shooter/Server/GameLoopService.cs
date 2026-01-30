@@ -117,6 +117,17 @@ namespace Shooter.Server
                             }
                         }
                     }
+
+                    int nameY = enemyScreenY - enemySprite.Length - 1;
+                    DrawName(
+                        session.Window.Screen,
+                        session.Window.ScreenWidth,
+                        session.Window.ScreenHeight,
+                        snap.Nickname,
+                        enemyScreenX,
+                        nameY,
+                        distance,
+                        session.Map.ColumnDepths);
                 }
                 if (miniMapOthers.Count == 0) miniMapOthers = null;
             }
@@ -137,6 +148,32 @@ namespace Shooter.Server
             }
             catch (WebSocketException) { }
             catch (ObjectDisposedException) { }
+        }
+
+        private static void DrawName(
+            char[,] screen,
+            int screenWidth,
+            int screenHeight,
+            string nickname,
+            int centerX,
+            int nameY,
+            float distance,
+            float[] columnDepths)
+        {
+            if (string.IsNullOrWhiteSpace(nickname)) return;
+            if (nameY < 0 || nameY >= screenHeight) return;
+
+            string label = nickname.Trim();
+            int startX = centerX - label.Length / 2;
+            for (int i = 0; i < label.Length; i++)
+            {
+                int x = startX + i;
+                if (x < 0 || x >= screenWidth) continue;
+                if (x < columnDepths.Length && distance < columnDepths[x])
+                {
+                    screen[x, nameY] = label[i];
+                }
+            }
         }
     }
 }
