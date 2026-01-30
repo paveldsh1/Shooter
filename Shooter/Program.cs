@@ -80,10 +80,10 @@ namespace Shooter
             app.Map("/ws", async (HttpContext context, PlayersRepository repository, GameHost host, PlayerStateService stateService) =>
             {
                 string nickname = context.Request.Query["nick"].ToString();
-                if (string.IsNullOrWhiteSpace(nickname)) 
-                { 
-                    context.Response.StatusCode = 400; 
-                    return; 
+                if (string.IsNullOrWhiteSpace(nickname))
+                {
+                    context.Response.StatusCode = 400;
+                    return;
                 }
 
                 if (!context.WebSockets.IsWebSocketRequest)

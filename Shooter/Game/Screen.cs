@@ -187,7 +187,7 @@ namespace Shooter.Game
             int startY = 1;
             DrawTextLines(lines, startX, startY);
         }
-        
+
         private void AddMiniMapToScreen(MiniMap miniMap)
         {
             for (int y = 0; y < miniMap.Map.GetLength(0); y++)
@@ -216,9 +216,9 @@ namespace Shooter.Game
             int rows = grid.GetLength(1);
             int cols = grid.GetLength(0);
             var result = new StringBuilder(rows * (cols + 1));
-            for(int y = 0; y < rows; ++y)
+            for (int y = 0; y < rows; ++y)
             {
-                for(int x = 0; x < cols; ++x)
+                for (int x = 0; x < cols; ++x)
                 {
                     result.Append(grid[x, y]);
                 }
