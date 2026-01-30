@@ -101,7 +101,7 @@ namespace Shooter
                 }
                 // load persisted state
                 var state = await stateService.LoadAsync(nickname);
-                if (state is not null)
+                if (state is not null && host.IsWalkable(state.PlayerX, state.PlayerY))
                 {
                     player.SetState(state.PlayerX, state.PlayerY, state.PlayerA);
                 }

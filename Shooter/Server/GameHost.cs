@@ -40,6 +40,8 @@ namespace Shooter.Server
             return sharedMiniMap.TryGetRandomSpawn(out x, out y, occupied);
         }
 
+        public bool IsWalkable(float x, float y) => sharedMiniMap.IsWalkable(x, y);
+
         public void UpsertSnapshot(string nickname, float x, float y, float a)
         {
             var key = nickname.Trim();
