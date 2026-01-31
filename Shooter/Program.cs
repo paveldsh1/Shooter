@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Shooter.Models;
 using Shooter.Repositories;
 using Shooter.Server;
@@ -19,6 +20,18 @@ namespace Shooter
                 var baseUrl = builder.Configuration["PlayerStateApi:BaseUrl"] ?? "http://localhost:51360";
                 client.BaseAddress = new Uri(baseUrl);
             });
+            builder.Services.Configure<GameAnalyticsOptions>(builder.Configuration.GetSection("GameAnalytics"));
+            builder.Services.AddHttpClient<GameAnalyticsClient>((sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<GameAnalyticsOptions>>().Value;
+                var baseUrl = string.IsNullOrWhiteSpace(options.BaseUrl)
+                    ? "https://sandbox-api.gameanalytics.com"
+                    : options.BaseUrl;
+                client.BaseAddress = new Uri(baseUrl);
+                client.Timeout = TimeSpan.FromSeconds(5);
+            });
+            builder.Services.AddSingleton<GameAnalyticsService>();
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<GameAnalyticsService>());
             var app = builder.Build();
 
             app.UseWebSockets();

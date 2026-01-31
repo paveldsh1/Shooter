@@ -11,14 +11,19 @@ namespace Shooter.Server
     {
         private readonly PlayersRepository playersRepository;
         private readonly PlayerStateApiClient stateClient;
+        private readonly GameAnalyticsService analytics;
         private readonly ConcurrentDictionary<string, GameSession> sessions = new(StringComparer.OrdinalIgnoreCase);
         private readonly MiniMap sharedMiniMap = new MiniMap();
         private readonly ConcurrentDictionary<string, PlayerSnapshot> snapshots = new(StringComparer.OrdinalIgnoreCase);
 
-        public GameHost(PlayersRepository playersRepository, PlayerStateApiClient stateClient)
+        public GameHost(
+            PlayersRepository playersRepository,
+            PlayerStateApiClient stateClient,
+            GameAnalyticsService analytics)
         {
             this.playersRepository = playersRepository;
             this.stateClient = stateClient;
+            this.analytics = analytics;
         }
 
         public bool HasSession(string nickname) =>
@@ -74,6 +79,7 @@ namespace Shooter.Server
             if (TryFindHitTarget(shooterNickname, sx, sy, sa, screenWidth, screenHeight, viewScale, out var hitNickname))
             {
                 KillPlayer(hitNickname);
+                analytics.TrackKill(shooterNickname, hitNickname);
             }
         }
 
@@ -237,6 +243,7 @@ namespace Shooter.Server
                 (n, x, y, a) => UpsertSnapshot(n, x, y, a),
                 (n, x, y, a, w, h, s) => HandleShoot(n, x, y, a, w, h, s));
             sessions[key] = session;
+            analytics.TrackSessionStart(player.Nickname);
 
             try
             {
@@ -244,6 +251,7 @@ namespace Shooter.Server
             }
             finally
             {
+                analytics.TrackSessionEnd(player.Nickname);
                 try
                 {
                     await stateClient.SaveAsync(player, CancellationToken.None);
