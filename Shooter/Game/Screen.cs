@@ -17,13 +17,13 @@ namespace Shooter.Game
             "M - toggle minimap",
             "1 - pistol",
             "2 - shotgun",
-            "9 - bot mode",
             "Space - shoot",
             "Enter - hide help",
             "Esc - exit",
             "[ - zoom out",
             "] - zoom in",
-            "0 - reset zoom"
+            "0 - reset zoom",
+            "9 - bot mode"
         ];
 
         private static readonly string[] HelpLinesHidden =

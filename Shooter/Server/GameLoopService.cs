@@ -20,10 +20,14 @@ namespace Shooter.Server
             var sw = System.Diagnostics.Stopwatch.StartNew();
             const int targetFps = 20;
             var frameDuration = TimeSpan.FromMilliseconds(1000.0 / targetFps);
+            var lastFrame = sw.Elapsed;
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 var frameStart = sw.Elapsed;
+                var delta = frameStart - lastFrame;
+                lastFrame = frameStart;
+                host.UpdateBots((float)delta.TotalSeconds);
 
                 var sessions = host.GetSessionsSnapshot();
                 if (sessions.Count > 0)

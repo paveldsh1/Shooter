@@ -10,13 +10,20 @@ namespace Shooter.Server
     internal class GameHost
     {
         private const int BotCount = 6;
+        private const float BotSpeed = 2.5f;
+        private const float BotTurnSpeed = 2.2f;
+        private const float BotDecisionMin = 0.6f;
+        private const float BotDecisionMax = 1.8f;
+        private const float BotDetectRange = 10.0f;
+        private const float BotLoseRange = 14.0f;
+        private const float BotStopDistance = 0.8f;
         private readonly PlayersRepository playersRepository;
         private readonly PlayerStateApiClient stateClient;
         private readonly GameAnalyticsService analytics;
         private readonly ConcurrentDictionary<string, GameSession> sessions = new(StringComparer.OrdinalIgnoreCase);
         private readonly MiniMap sharedMiniMap = new MiniMap();
         private readonly ConcurrentDictionary<string, PlayerSnapshot> snapshots = new(StringComparer.OrdinalIgnoreCase);
-        private readonly ConcurrentDictionary<string, PlayerSnapshot> bots = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, BotState> bots = new(StringComparer.OrdinalIgnoreCase);
         private volatile bool botsMode;
 
         public GameHost(
@@ -45,7 +52,7 @@ namespace Shooter.Server
         {
             if (botsMode)
             {
-                return bots.Values.Where(x => x.IsAlive).ToList();
+                return bots.Values.Select(x => x.ToSnapshot()).ToList();
             }
             return snapshots.Values.Where(x => x.IsAlive).ToList();
         }
@@ -72,10 +79,7 @@ namespace Shooter.Server
             }
             foreach (var bot in bots.Values)
             {
-                if (bot.IsAlive)
-                {
-                    occupied.Add((bot.X, bot.Y));
-                }
+                occupied.Add((bot.X, bot.Y));
             }
             return sharedMiniMap.TryGetRandomSpawn(out x, out y, occupied);
         }
@@ -95,7 +99,9 @@ namespace Shooter.Server
         {
             if (!CanShoot(shooterNickname)) return;
 
-            var targets = botsMode ? bots.Values : snapshots.Values;
+            IEnumerable<PlayerSnapshot> targets = botsMode
+                ? bots.Values.Select(x => x.ToSnapshot())
+                : snapshots.Values;
             if (TryFindHitTarget(shooterNickname, targets, sx, sy, sa, screenWidth, screenHeight, viewScale, out var hitNickname))
             {
                 if (botsMode)
@@ -244,8 +250,150 @@ namespace Shooter.Server
                 occupied.Add((x, y));
                 float a = Random.Shared.NextSingle() * 2f * MathF.PI;
                 string name = $"Bot{i}";
-                bots[name] = new PlayerSnapshot(name, x, y, a, DateTime.UtcNow, true);
+                bots[name] = new BotState(name, x, y, a);
             }
+        }
+
+        public void UpdateBots(float dt)
+        {
+            if (!botsMode || bots.IsEmpty) return;
+
+            float step = Math.Clamp(dt, 0f, 0.2f);
+            foreach (var bot in bots.Values)
+            {
+                UpdateBot(bot, step);
+            }
+        }
+
+        private void UpdateBot(BotState bot, float dt)
+        {
+            if (TryAcquireTarget(bot, out var target, out float distance, out float targetA))
+            {
+                TurnTowards(bot, targetA, dt);
+                if (distance > BotStopDistance)
+                {
+                    if (!TryMoveForward(bot, dt))
+                    {
+                        bot.TargetA = NormalizeAngle(bot.A + (Random.Shared.NextSingle() - 0.5f) * MathF.PI);
+                        bot.NextDecisionIn = RandomRange(0.2f, 0.6f);
+                    }
+                }
+                return;
+            }
+
+            bot.NextDecisionIn -= dt;
+            if (bot.NextDecisionIn <= 0f)
+            {
+                bot.TargetA = Random.Shared.NextSingle() * 2f * MathF.PI;
+                bot.NextDecisionIn = RandomRange(BotDecisionMin, BotDecisionMax);
+            }
+
+            TurnTowards(bot, bot.TargetA, dt);
+            if (!TryMoveForward(bot, dt))
+            {
+                bot.TargetA = NormalizeAngle(bot.A + (Random.Shared.NextSingle() - 0.5f) * MathF.PI);
+                bot.NextDecisionIn = RandomRange(0.2f, 0.6f);
+            }
+        }
+
+        private bool TryAcquireTarget(BotState bot, out PlayerSnapshot target, out float distance, out float angle)
+        {
+            target = default;
+            distance = 0f;
+            angle = 0f;
+
+            if (bot.TargetNickname is not null &&
+                snapshots.TryGetValue(bot.TargetNickname, out var locked) &&
+                locked.IsAlive &&
+                TryGetTargetData(bot, locked, BotLoseRange, out distance, out angle))
+            {
+                target = locked;
+                return true;
+            }
+
+            float best = float.MaxValue;
+            foreach (var snap in snapshots.Values)
+            {
+                if (!snap.IsAlive) continue;
+                if (!TryGetTargetData(bot, snap, BotDetectRange, out float dist, out float ang)) continue;
+                if (dist < best)
+                {
+                    best = dist;
+                    target = snap;
+                    distance = dist;
+                    angle = ang;
+                }
+            }
+
+            if (best < float.MaxValue)
+            {
+                bot.TargetNickname = target.Nickname;
+                return true;
+            }
+
+            bot.TargetNickname = null;
+            return false;
+        }
+
+        private bool TryGetTargetData(BotState bot, PlayerSnapshot snap, float maxRange, out float distance, out float angle)
+        {
+            float dx = snap.X - bot.X;
+            float dy = snap.Y - bot.Y;
+            distance = MathF.Sqrt(dx * dx + dy * dy);
+            angle = 0f;
+            if (distance > maxRange) return false;
+            if (!HasLineOfSight(bot.X, bot.Y, snap.X, snap.Y)) return false;
+
+            angle = MathF.Atan2(dy, dx);
+            if (angle < 0) angle += 2f * MathF.PI;
+            return true;
+        }
+
+        private void TurnTowards(BotState bot, float targetA, float dt)
+        {
+            float delta = ShortestAngle(bot.A, targetA);
+            float maxTurn = BotTurnSpeed * dt;
+            if (MathF.Abs(delta) <= maxTurn)
+            {
+                bot.A = NormalizeAngle(targetA);
+            }
+            else
+            {
+                bot.A = NormalizeAngle(bot.A + MathF.Sign(delta) * maxTurn);
+            }
+        }
+
+        private bool TryMoveForward(BotState bot, float dt)
+        {
+            float step = BotSpeed * dt;
+            float nx = bot.X + MathF.Cos(bot.A) * step;
+            float ny = bot.Y + MathF.Sin(bot.A) * step;
+            if (sharedMiniMap.IsWalkable(nx, ny))
+            {
+                bot.X = nx;
+                bot.Y = ny;
+                return true;
+            }
+            return false;
+        }
+
+        private static float ShortestAngle(float from, float to)
+        {
+            float diff = to - from;
+            return MathF.Atan2(MathF.Sin(diff), MathF.Cos(diff));
+        }
+
+        private static float NormalizeAngle(float angle)
+        {
+            float twoPi = 2f * MathF.PI;
+            angle %= twoPi;
+            if (angle < 0) angle += twoPi;
+            return angle;
+        }
+
+        private static float RandomRange(float min, float max)
+        {
+            return min + (max - min) * Random.Shared.NextSingle();
         }
 
         private void SetAlive(string nickname, bool alive)
