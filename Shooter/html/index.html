@@ -84,10 +84,10 @@
 <body>
     <div id="overlay">
         <div id="form">
-            <div style="margin-bottom:8px;">Введите никнейм</div>
+            <div style="margin-bottom:8px;">Enter nickname</div>
             <input id="nickname" type="text" maxlength="24" placeholder="Player1" />
             <div id="error" style="color:#f55; min-height:20px;"></div>
-            <button id="join">Войти</button>
+            <button id="join">Join</button>
         </div>
     </div>
 
@@ -200,8 +200,8 @@
                 ws = null;
                 overlay.style.display = "flex";
                 errorBox.textContent = e.reason === "Killed"
-                    ? "Вас убили. Введите ник и зайдите снова."
-                    : "Соединение закрыто. Введите ник и зайдите снова.";
+                    ? "You were killed. Enter a nickname and join again."
+                    : "Connection closed. Enter a nickname and join again.";
             };
         }
 
@@ -256,7 +256,7 @@
         joinBtn.addEventListener("click", async () => {
             const nickname = nicknameInput.value.trim();
             if (!nickname) {
-                errorBox.textContent = "Введите никнейм";
+                errorBox.textContent = "Enter a nickname";
                 return;
             }
             try {

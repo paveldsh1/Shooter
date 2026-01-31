@@ -187,8 +187,11 @@ namespace Shooter.Services
                 OperatingSystem.IsLinux() ? "linux" :
                 OperatingSystem.IsMacOS() ? "mac_osx" :
                 "windows";
-            var version = Environment.OSVersion.Version.ToString();
-            return $"{osName} {version}";
+            var version = Environment.OSVersion.Version;
+            string versionText = version.Build >= 0
+                ? $"{version.Major}.{version.Minor}.{version.Build}"
+                : $"{version.Major}.{version.Minor}";
+            return $"{osName} {versionText}";
         }
 
         private static string Sanitize(string? value, string fallback)
