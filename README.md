@@ -14,16 +14,19 @@ Real‑time ASCII shooter with a shared map, WebSocket sessions, local bot AI, a
 - Optional player state persistence via external API
 - Optional GameAnalytics events (session start/end, kills)
 
+### Demo
+![Gameplay demo](docs/demo.gif)
+
 ### Architecture
 ```mermaid
 flowchart LR
-  Browser[Browser client<br/>html/index.html]
-  Server[Shooter ASP.NET Core]
-  Host[GameHost + GameSession]
-  Loop[GameLoopService]
-  Game[Map / MiniMap / Window]
-  State[PlayerState API<br/>(external)]
-  GA[GameAnalytics API]
+  Browser["Browser client: html/index.html"]
+  Server["Shooter ASP.NET Core"]
+  Host["GameHost + GameSession"]
+  Loop["GameLoopService"]
+  Game["Map / MiniMap / Window"]
+  State["PlayerState API (external)"]
+  GA["GameAnalytics API"]
 
   Browser -- HTTP /players/register, /players/login --> Server
   Browser -- WebSocket /ws --> Server
@@ -91,16 +94,19 @@ dotnet user-secrets set "GameAnalytics:BaseUrl" "https://api.gameanalytics.com"
 - Опциональное сохранение состояния через внешний API
 - Опциональная интеграция GameAnalytics (сессии/убийства)
 
+### Демонстрация
+![Демо игры](docs/demo.gif)
+
 ### Архитектура
 ```mermaid
 flowchart LR
-  Browser[Браузерный клиент<br/>html/index.html]
-  Server[Shooter ASP.NET Core]
-  Host[GameHost + GameSession]
-  Loop[GameLoopService]
-  Game[Map / MiniMap / Window]
-  State[PlayerState API<br/>(внешний сервис)]
-  GA[GameAnalytics API]
+  Browser["Браузерный клиент: html/index.html"]
+  Server["Shooter ASP.NET Core"]
+  Host["GameHost + GameSession"]
+  Loop["GameLoopService"]
+  Game["Map / MiniMap / Window"]
+  State["PlayerState API (внешний сервис)"]
+  GA["GameAnalytics API"]
 
   Browser -- HTTP /players/register, /players/login --> Server
   Browser -- WebSocket /ws --> Server
