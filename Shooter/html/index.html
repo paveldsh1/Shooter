@@ -54,7 +54,7 @@
             cursor: pointer;
         }
 
-        textarea {
+        #output {
             width: 100vw;
             height: 100vh;
             line-height: 1;
@@ -67,6 +67,11 @@
             font-family: inherit;
             font-size: 14px;
             display: block;
+            white-space: pre;
+        }
+
+        .help-alert {
+            color: #ff4444;
         }
 
         input {
@@ -86,7 +91,7 @@
         </div>
     </div>
 
-    <textarea id="output" readonly rows="40" cols="120" wrap="off" spellcheck="false"></textarea>
+    <pre id="output"></pre>
 
     <script>
         const output = document.getElementById("output");
@@ -100,6 +105,7 @@
         let lastRows = 0;
         let scale = 1;
         const baseFontSize = 14;
+        const botHelpLabel = "9 - bot mode";
         const measure = document.createElement("span");
         measure.textContent = "W";
         measure.style.position = "absolute";
@@ -129,8 +135,6 @@
             if (cols === lastCols && rows === lastRows) return;
             lastCols = cols;
             lastRows = rows;
-            output.cols = cols;
-            output.rows = rows;
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(`RESIZE ${cols} ${rows} ${scale.toFixed(2)}`);
             }
@@ -175,30 +179,53 @@
             ws = new WebSocket(url);
 
             ws.onopen = () => {
-                output.value = "WebSocket connected";
+                output.textContent = "WebSocket connected";
                 resizeAndSend();
             };
 
             ws.onmessage = async e => {
                 if (e.data instanceof Blob) {
-                    output.value = await e.data.text();
+                    renderFrame(await e.data.text());
                 } else {
-                    output.value = e.data;
+                    renderFrame(e.data);
                 }
             };
 
             ws.onerror = e => {
-                output.value = "WebSocket error";
+                output.textContent = "WebSocket error";
             };
 
             ws.onclose = e => {
-                output.value = "";
+                output.textContent = "";
                 ws = null;
                 overlay.style.display = "flex";
                 errorBox.textContent = e.reason === "Killed"
                     ? "Вас убили. Введите ник и зайдите снова."
                     : "Соединение закрыто. Введите ник и зайдите снова.";
             };
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        function renderFrame(text) {
+            const lines = String(text).split("\n");
+            const rendered = lines.map(line => highlightLabel(line, botHelpLabel));
+            output.innerHTML = rendered.join("\n");
+        }
+
+        function highlightLabel(line, label) {
+            const idx = line.indexOf(label);
+            if (idx === -1) {
+                return escapeHtml(line);
+            }
+            const before = line.slice(0, idx);
+            const after = line.slice(idx + label.length);
+            return `${escapeHtml(before)}<span class="help-alert">${escapeHtml(label)}</span>${escapeHtml(after)}`;
         }
 
         async function registerNickname(nickname) {

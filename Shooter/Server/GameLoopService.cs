@@ -91,7 +91,7 @@ namespace Shooter.Server
 
         private IReadOnlyCollection<(float X, float Y, float A)>? DrawOtherPlayers(GameSession session, float spriteScale)
         {
-            var others = host.GetAliveSnapshots();
+            var others = host.GetVisibleSnapshots();
             if (others.Count == 0) return null;
 
             var miniMapOthers = new List<(float X, float Y, float A)>(others.Count);

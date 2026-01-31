@@ -9,12 +9,15 @@ namespace Shooter.Server
 {
     internal class GameHost
     {
+        private const int BotCount = 6;
         private readonly PlayersRepository playersRepository;
         private readonly PlayerStateApiClient stateClient;
         private readonly GameAnalyticsService analytics;
         private readonly ConcurrentDictionary<string, GameSession> sessions = new(StringComparer.OrdinalIgnoreCase);
         private readonly MiniMap sharedMiniMap = new MiniMap();
         private readonly ConcurrentDictionary<string, PlayerSnapshot> snapshots = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, PlayerSnapshot> bots = new(StringComparer.OrdinalIgnoreCase);
+        private volatile bool botsMode;
 
         public GameHost(
             PlayersRepository playersRepository,
@@ -38,6 +41,15 @@ namespace Shooter.Server
         public IReadOnlyCollection<PlayerSnapshot> GetAliveSnapshots()
             => snapshots.Values.Where(x => x.IsAlive).ToList();
 
+        public IReadOnlyCollection<PlayerSnapshot> GetVisibleSnapshots()
+        {
+            if (botsMode)
+            {
+                return bots.Values.Where(x => x.IsAlive).ToList();
+            }
+            return snapshots.Values.Where(x => x.IsAlive).ToList();
+        }
+
         public bool TryGetSnapshot(string nickname, out PlayerSnapshot snapshot)
         {
             if (string.IsNullOrWhiteSpace(nickname))
@@ -58,6 +70,13 @@ namespace Shooter.Server
                     occupied.Add((snap.X, snap.Y));
                 }
             }
+            foreach (var bot in bots.Values)
+            {
+                if (bot.IsAlive)
+                {
+                    occupied.Add((bot.X, bot.Y));
+                }
+            }
             return sharedMiniMap.TryGetRandomSpawn(out x, out y, occupied);
         }
 
@@ -76,9 +95,17 @@ namespace Shooter.Server
         {
             if (!CanShoot(shooterNickname)) return;
 
-            if (TryFindHitTarget(shooterNickname, sx, sy, sa, screenWidth, screenHeight, viewScale, out var hitNickname))
+            var targets = botsMode ? bots.Values : snapshots.Values;
+            if (TryFindHitTarget(shooterNickname, targets, sx, sy, sa, screenWidth, screenHeight, viewScale, out var hitNickname))
             {
-                KillPlayer(hitNickname);
+                if (botsMode)
+                {
+                    KillBot(hitNickname);
+                }
+                else
+                {
+                    KillPlayer(hitNickname);
+                }
                 analytics.TrackKill(shooterNickname, hitNickname);
             }
         }
@@ -91,6 +118,7 @@ namespace Shooter.Server
 
         private bool TryFindHitTarget(
             string shooterNickname,
+            IEnumerable<PlayerSnapshot> candidates,
             float sx,
             float sy,
             float sa,
@@ -103,7 +131,7 @@ namespace Shooter.Server
             float bestDistance = float.MaxValue;
             float spriteScale = SpriteMetrics.GetDistanceScale(screenWidth, screenHeight, viewScale);
 
-            foreach (var snap in snapshots.Values)
+            foreach (var snap in candidates)
             {
                 if (!IsEnemyTarget(shooterNickname, snap)) continue;
                 if (!TryProjectTarget(sx, sy, sa, screenWidth, snap, out int enemyScreenX, out float distance)) continue;
@@ -177,6 +205,49 @@ namespace Shooter.Server
             }
         }
 
+        private void KillBot(string nickname)
+        {
+            bots.TryRemove(nickname.Trim(), out _);
+        }
+
+        public void ToggleBotsMode(string requestedBy)
+        {
+            botsMode = !botsMode;
+            if (botsMode)
+            {
+                SpawnBots();
+            }
+            else
+            {
+                bots.Clear();
+            }
+        }
+
+        private void SpawnBots()
+        {
+            bots.Clear();
+            var occupied = new List<(float X, float Y)>(snapshots.Count + BotCount);
+            foreach (var snap in snapshots.Values)
+            {
+                if (snap.IsAlive)
+                {
+                    occupied.Add((snap.X, snap.Y));
+                }
+            }
+
+            for (int i = 1; i <= BotCount; i++)
+            {
+                if (!sharedMiniMap.TryGetRandomSpawn(out float x, out float y, occupied))
+                {
+                    break;
+                }
+                occupied.Add((x, y));
+                float a = Random.Shared.NextSingle() * 2f * MathF.PI;
+                string name = $"Bot{i}";
+                bots[name] = new PlayerSnapshot(name, x, y, a, DateTime.UtcNow, true);
+            }
+        }
+
         private void SetAlive(string nickname, bool alive)
         {
             var key = nickname.Trim();
@@ -241,6 +312,7 @@ namespace Shooter.Server
                 player,
                 sharedMiniMap,
                 (n, x, y, a) => UpsertSnapshot(n, x, y, a),
+                (n) => ToggleBotsMode(n),
                 (n, x, y, a, w, h, s) => HandleShoot(n, x, y, a, w, h, s));
             sessions[key] = session;
             analytics.TrackSessionStart(player.Nickname);

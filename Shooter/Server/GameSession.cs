@@ -21,6 +21,7 @@ namespace Shooter.Server
         public volatile bool MiniMapVisible = true;
         public volatile bool HelpVisible = true;
         private readonly Action<string, float, float, float> positionUpdated;
+        private readonly Action<string> botModeToggled;
         private readonly Action<string, float, float, float, int, int, float> shotFired;
         private readonly object renderLock = new();
         public float ViewScale { get; private set; } = 1.0f;
@@ -36,6 +37,7 @@ namespace Shooter.Server
             Player player,
             MiniMap sharedMiniMap,
             Action<string, float, float, float> positionUpdated,
+            Action<string> botModeToggled,
             Action<string, float, float, float, int, int, float> shotFired)
         {
             Nickname = nickname;
@@ -43,6 +45,7 @@ namespace Shooter.Server
             Player = player;
             SharedMiniMap = sharedMiniMap;
             this.positionUpdated = positionUpdated ?? ((_, _, _, _) => { });
+            this.botModeToggled = botModeToggled ?? (_ => { });
             this.shotFired = shotFired ?? ((_, _, _, _, _, _, _) => { });
             Window = new Window();
             Map = new Map(sharedMiniMap, player, Window);
@@ -83,6 +86,7 @@ namespace Shooter.Server
                             break;
                         case "Digit1": EquippedWeapon = WeaponType.Pistol; break;
                         case "Digit2": EquippedWeapon = WeaponType.Shotgun; break;
+                        case "Digit9": botModeToggled?.Invoke(Nickname); break;
                         case "Space":
                             if (!IsShooting)
                             {
