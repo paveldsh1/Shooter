@@ -14,6 +14,13 @@ Real‑time ASCII shooter with a shared map, WebSocket sessions, local bot AI, a
 - Optional player state persistence via external API
 - Optional GameAnalytics events (session start/end, kills)
 
+### Tech Stack
+- Backend: C# / .NET 8, ASP.NET Core minimal APIs, WebSockets
+- Runtime services: `BackgroundService`, hosted services, `System.Threading.Channels`
+- Concurrency: `ConcurrentDictionary`, async/await, task-based parallelism
+- Integrations: `HttpClientFactory`, PlayerState API, GameAnalytics REST API
+- Frontend: HTML + CSS + vanilla JavaScript, Fetch API, WebSocket client
+
 ### Demo
 ![Gameplay demo](docs/demo.gif)
 
@@ -206,6 +213,13 @@ dotnet user-secrets set "GameAnalytics:BaseUrl" "https://api.gameanalytics.com"
 - Режим ботов (клавиша `9` заменяет игроков ботами)
 - Опциональное сохранение состояния через внешний API
 - Опциональная интеграция GameAnalytics (сессии/убийства)
+
+### Стек технологий
+- Бэкенд: C# / .NET 8, ASP.NET Core minimal API, WebSockets
+- Фоновые сервисы: `BackgroundService`, hosted services, `System.Threading.Channels`
+- Конкурентность: `ConcurrentDictionary`, async/await, параллелизм на `Task`
+- Интеграции: `HttpClientFactory`, PlayerState API, GameAnalytics REST API
+- Фронтенд: HTML + CSS + vanilla JavaScript, Fetch API, WebSocket клиент
 
 ### Демонстрация
 ![Демо игры](docs/demo.gif)
