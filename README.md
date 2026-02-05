@@ -174,9 +174,33 @@ Shooter/
 3. Enter a nickname and join
 
 ### Player State Service (optional)
-The game expects an external minimal API for persistence:
+The game expects an external minimal API for persistence (PlayerState Service):
+- Purpose: store/load last position and angle by `nickname`
+- Tech: .NET 8 + ASP.NET Core minimal API, EF Core 8, SQLite
 - Default URL: `http://localhost:51360`
 - Configure in `appsettings.json` under `PlayerStateApi:BaseUrl`
+- Service DB: SQLite file created at startup (default `Data Source=playerstate.db`)
+
+#### API (PlayerState Service)
+- `GET /playerstates/{nickname}` → `200` JSON, `404` if missing, `400` if nickname empty
+- `PUT /playerstates/{nickname}` → create/update, `200` JSON, `400` if nickname empty
+- Error format: `{ "error": "Nickname is required" }`
+
+Example response:
+```json
+{
+  "nickname": "Alex",
+  "playerX": 10.5,
+  "playerY": -3.2,
+  "playerA": 1.57,
+  "updatedAt": "2026-02-05T12:34:56.789Z"
+}
+```
+
+Quick start:
+```bash
+dotnet run --project PlayerStateServiceApi/PlayerStateServiceApi.csproj
+```
 
 ### GameAnalytics (optional)
 Set secrets and enable:
@@ -374,9 +398,33 @@ Shooter/
 3. Ввести ник и войти
 
 ### Сервис состояния (опционально)
-Для сохранения состояния используется внешний minimal API:
+Для сохранения состояния используется внешний minimal API (PlayerState Service):
+- Назначение: хранение/выдача последней позиции и угла по `nickname`
+- Технологии: .NET 8 + ASP.NET Core minimal API, EF Core 8, SQLite
 - URL по умолчанию: `http://localhost:51360`
 - Настройка в `appsettings.json` → `PlayerStateApi:BaseUrl`
+- БД сервиса: SQLite‑файл создается при старте (по умолчанию `Data Source=playerstate.db`)
+
+#### API (PlayerState Service)
+- `GET /playerstates/{nickname}` → `200` JSON, `404` если нет записи, `400` если ник пустой
+- `PUT /playerstates/{nickname}` → создать/обновить, `200` JSON, `400` если ник пустой
+- Формат ошибки: `{ "error": "Nickname is required" }`
+
+Пример ответа:
+```json
+{
+  "nickname": "Alex",
+  "playerX": 10.5,
+  "playerY": -3.2,
+  "playerA": 1.57,
+  "updatedAt": "2026-02-05T12:34:56.789Z"
+}
+```
+
+Быстрый старт:
+```bash
+dotnet run --project PlayerStateServiceApi/PlayerStateServiceApi.csproj
+```
 
 ### GameAnalytics (опционально)
 Секреты и включение:
